@@ -1522,16 +1522,19 @@ body {
     cursor: pointer;
     display: block;
     text-decoration: none;
+    width: 100%;
+    max-width: 400px;
 }
 
 .profile-preview-inner {
     background: var(--text-white);
     border: 3px solid var(--text-black);
     border-radius: 12px;
-    padding: 14px 24px;
+    padding: 12px 16px;
     display: flex;
     align-items: center;
-    gap: 15px;
+    justify-content: space-between; 
+    gap: 12px;
     width: 100%;
     box-sizing: border-box;
     transform: translate(0, 0);
@@ -1546,11 +1549,13 @@ body {
     display: flex;
     flex-direction: column;
     justify-content: center;
+    min-width: 0;
+    flex: 1;
 }
 
 .profile-name {
     font-family: 'modern-bold', sans-serif;
-    font-size: clamp(24px, 2.5vw, 32px);
+    font-size: clamp(18px, 4vw, 28px); 
     color: var(--purple-dark);
     font-weight: normal; 
     text-transform: lowercase;
@@ -1559,7 +1564,7 @@ body {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 200px;
+    max-width: 100%;
 }
 
 .profile-action {
@@ -1613,10 +1618,6 @@ body {
     stroke: currentColor;
     margin-top: -2px;
 }
-
-/* =========================================
-   RESPONSIVE MEDIA QUERIES
-   ========================================= */
 
 @media (max-width: 1024px) {
     .loaves-grid {
@@ -1732,5 +1733,30 @@ body {
         bottom: 12px;
         right: 12px;
         padding: 4px 6px 4px 14px;
+    }
+}
+
+@media (max-width: 480px) {
+    .side-menu-reveal {
+        padding: 30px 16px;
+    }
+
+    .menu-card-box {
+        padding: 14px 16px;
+        max-width: 100%;
+    }
+
+    .profile-preview-inner {
+        padding: 10px 14px;
+        gap: 10px;
+    }
+
+    .logout-form-wrapper {
+        max-width: 100%;
+    }
+
+    .logout-3d-btn {
+        font-size: 20px;
+        padding: 10px 18px;
     }
 }
