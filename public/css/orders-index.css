@@ -1,4 +1,3 @@
-/* public/css/orders-index.css */
 body {
     font-family: 'modern-bold', sans-serif;
     background-color: #7526dd !important;
@@ -26,13 +25,10 @@ body {
     box-sizing: border-box;
 }
 
-/* =========================================
-   HERO BANNER (480px Height & Centered)
-   ========================================= */
 .hero-banner {
     position: relative;
     width: auto !important;
-    height: 480px;
+    min-height: clamp(380px, 42vw, 480px);
     margin: 5px 15px 24px 15px !important;
     background: #5204b9;
     color: white;
@@ -40,10 +36,10 @@ body {
     box-shadow: 0 4px 12px rgba(138,56,245,0.2);
     box-sizing: border-box;
     overflow: hidden;
-
     display: flex;
     align-items: center;
     justify-content: center;
+    padding: 30px 16px;
 }
 
 .hero-content {
@@ -51,23 +47,27 @@ body {
     z-index: 10;
     text-align: center;
     max-width: 48rem;
-    padding: 0 24px;
+    width: 100%;
+    padding: 0 16px;
+    box-sizing: border-box;
 }
 
 .hero-banner h1 {
     font-family: 'Recoleta-Bold', sans-serif;
-    font-size: 3rem;
+    font-size: clamp(1.85rem, 4vw, 3rem);
     font-weight: 700;
     margin: 0 0 16px 0;
     letter-spacing: -0.025em;
+    line-height: 1.1;
 }
 
 .hero-banner p {
-    font-size: 1.15rem;
+    font-size: clamp(0.95rem, 1.8vw, 1.15rem);
     font-weight: 300;
     color: #e9d5ff;
-    margin: 0 auto 32px auto;
+    margin: 0 auto 28px auto;
     line-height: 1.4;
+    max-width: 600px;
 }
 
 .hero-actions {
@@ -75,21 +75,24 @@ body {
     gap: 16px;
     justify-content: center;
     flex-wrap: wrap;
+    width: 100%;
 }
 
 .btn-upload {
     background-color: white;
     color: #8A38F5;
     font-weight: 800;
-    padding: 16px 32px;
+    padding: 14px 28px;
     border-radius: 16px;
     border-bottom: 4px solid #e9d5ff;
     text-decoration: none;
-    font-size: 1.1rem;
+    font-size: clamp(0.95rem, 1.5vw, 1.1rem);
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
     transition: all 0.1s;
+    box-sizing: border-box;
 }
 
 .btn-upload:active {
@@ -101,39 +104,40 @@ body {
     background-color: rgba(157, 40, 247, 0.4);
     color: white;
     font-weight: 800;
-    padding: 16px 32px;
+    padding: 14px 28px;
     border-radius: 16px;
     border-bottom: 4px solid #34015b;
     text-decoration: none;
-    font-size: 1.1rem;
+    font-size: clamp(0.95rem, 1.5vw, 1.1rem);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     transition: all 0.1s;
+    box-sizing: border-box;
 }
 
 .btn-browse:hover { background-color: rgba(88, 28, 135, 0.6); }
 .btn-browse:active { border-bottom: 0; transform: translateY(4px); }
 
-/* =========================================
-   CAROUSEL IMAGES IN HERO BANNER
-   ========================================= */
 .hero-bg-images {
     position: absolute;
     inset: 0;
     z-index: 1;
     pointer-events: none;
+    overflow: hidden;
 }
 
 .hero-cake {
     position: absolute;
-    width: 200px;
-    height: 200px;
+    width: clamp(120px, 15vw, 200px);
+    height: clamp(120px, 15vw, 200px);
     object-fit: cover;
     border-radius: 20px;
     box-shadow: 0 12px 24px rgba(0, 0, 0, 0.25);
     border: 4px solid #FFFFFF;
-    transition: transform 0.3s ease;
+    transition: transform 0.3s ease, opacity 0.3s ease;
 }
 
-/* LEFT SIDE IMAGES */
 .cake-l1 {
     top: -20px;
     left: -20px;
@@ -144,8 +148,8 @@ body {
     top: 30px;
     left: 170px;
     transform: rotate(8deg);
-    width: 180px;
-    height: 180px;
+    width: clamp(110px, 13vw, 180px);
+    height: clamp(110px, 13vw, 180px);
 }
 
 .cake-l3 {
@@ -158,11 +162,10 @@ body {
     bottom: 10px;
     left: 160px;
     transform: rotate(-10deg);
-    width: 190px;
-    height: 190px;
+    width: clamp(110px, 14vw, 190px);
+    height: clamp(110px, 14vw, 190px);
 }
 
-/* RIGHT SIDE IMAGES */
 .cake-r1 {
     top: -30px;
     right: -20px;
@@ -173,8 +176,8 @@ body {
     top: 20px;
     right: 170px;
     transform: rotate(-8deg);
-    width: 180px;
-    height: 180px;
+    width: clamp(110px, 13vw, 180px);
+    height: clamp(110px, 13vw, 180px);
 }
 
 .cake-r3 {
@@ -187,29 +190,24 @@ body {
     bottom: 20px;
     right: 160px;
     transform: rotate(10deg);
-    width: 190px;
-    height: 190px;
+    width: clamp(110px, 14vw, 190px);
+    height: clamp(110px, 14vw, 190px);
 }
 
-@media (max-width: 1280px) {
-    .cake-l2, .cake-r2 { display: none; }
-}
-@media (max-width: 900px) {
-    .hero-cake { width: 140px; height: 140px; }
-}
-
-/* =========================================
-   SECTION HEADERS & MARGINS
-   ========================================= */
 .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     margin-bottom: 12px;
     padding-left: 15px !important;
     padding-right: 15px !important;
     box-sizing: border-box;
+    flex-wrap: wrap;
+    gap: 8px;
 }
 
 .section-header h2 {
-    font-size: 1.5rem;
+    font-size: clamp(1.2rem, 2.2vw, 1.5rem);
     font-weight: 800;
     margin: 0;
     color: #ffffff;
@@ -218,18 +216,15 @@ body {
 .section-header p {
     color: #e9d5ff;
     font-weight: 700;
-    font-size: 0.875rem;
+    font-size: clamp(0.75rem, 1.2vw, 0.875rem);
     margin: 2px 0 0 0;
 }
 
-/* =========================================
-   CONTAINED CAROUSEL BOX & CLIPPING
-   ========================================= */
 .carousel-box {
     background: #ffffff;
     border: 2px solid #e2e8f0;
     border-radius: 20px;
-    padding: 20px;
+    padding: clamp(12px, 2vw, 20px);
     margin: 0 15px 32px 15px;
     overflow: hidden;
     position: relative;
@@ -238,12 +233,14 @@ body {
 
 .carousel-track {
     display: flex;
-    gap: 18px;
+    gap: clamp(12px, 2vw, 18px);
     overflow-x: auto;
     scroll-behavior: smooth;
-    padding-bottom: 4px;
+    padding-bottom: 6px;
     scrollbar-width: none;
     -ms-overflow-style: none;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x mandatory;
 }
 
 .carousel-track::-webkit-scrollbar {
@@ -251,8 +248,9 @@ body {
 }
 
 .carousel-card {
-    flex: 0 0 310px;
+    flex: 0 0 clamp(240px, 70vw, 310px);
     max-width: 310px;
+    scroll-snap-align: start;
     box-sizing: border-box;
     border-radius: 14px;
     padding: 16px;
@@ -264,10 +262,10 @@ body {
     overflow: hidden;
 }
 
-/* See More / View All Card */
 .carousel-card-more {
-    flex: 0 0 220px;
+    flex: 0 0 clamp(180px, 50vw, 220px);
     max-width: 220px;
+    scroll-snap-align: start;
     background: #f8fafc;
     border: 2px dashed #cbd5e1;
     border-radius: 14px;
@@ -280,6 +278,7 @@ body {
     gap: 10px;
     text-decoration: none;
     transition: all 0.2s ease;
+    box-sizing: border-box;
 }
 
 .carousel-card-more:hover {
@@ -287,7 +286,6 @@ body {
     background: #f3e8ff;
 }
 
-/* Navigation Arrow Controls */
 .carousel-nav-controls {
     display: flex;
     align-items: center;
@@ -318,9 +316,6 @@ body {
     box-shadow: 0 4px 12px rgba(138, 56, 245, 0.25);
 }
 
-/* =========================================
-   LIFESTYLE CAROUSEL & FOOTER
-   ========================================= */
 .lifestyle-section {
     width: 100vw !important;
     position: relative;
@@ -366,4 +361,71 @@ body {
 @keyframes footer-icon-cycle {
     0%, 28% { opacity: 1; transform: scale(1); }
     33.33%, 100% { opacity: 0; transform: scale(0.8); }
+}
+
+@media (max-width: 1280px) {
+    .cake-l2, .cake-r2 { 
+        display: none; 
+    }
+}
+
+@media (max-width: 900px) {
+    .hero-cake { 
+        width: 130px; 
+        height: 130px; 
+        opacity: 0.8;
+    }
+
+    .cake-l1 { top: -10px; left: -30px; }
+    .cake-l4 { bottom: -10px; left: -20px; }
+    .cake-r1 { top: -10px; right: -30px; }
+    .cake-r4 { bottom: -10px; right: -20px; }
+
+    .cake-l3, .cake-r3 {
+        display: none;
+    }
+}
+
+@media (max-width: 600px) {
+    .hero-banner {
+        margin: 5px 10px 18px 10px !important;
+        min-height: 320px;
+        padding: 24px 12px;
+    }
+
+    .hero-content {
+        padding: 0 8px;
+    }
+
+    .hero-actions {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .btn-upload,
+    .btn-browse {
+        width: 100%;
+        padding: 12px 20px;
+    }
+
+    .hero-cake {
+        opacity: 0.35;
+        width: 100px;
+        height: 100px;
+    }
+
+    .carousel-box {
+        margin: 0 10px 24px 10px;
+        padding: 12px;
+        border-radius: 16px;
+    }
+
+    .section-header {
+        padding-left: 10px !important;
+        padding-right: 10px !important;
+    }
+
+    .carousel-nav-controls {
+        display: none;
+    }
 }
