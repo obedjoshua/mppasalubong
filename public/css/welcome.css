@@ -1187,9 +1187,10 @@ body {
     background: var(--text-white);
     border: 3px solid var(--text-black);
     border-radius: 12px; 
-    padding: 20px 32px;
+    padding: 16px 20px; 
     width: 100%;
     max-width: 400px;
+    box-sizing: border-box;
 }
 
 .login-box {
@@ -1541,6 +1542,13 @@ body {
     transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
+.profile-preview-inner .icon-btn,
+.profile-preview-inner .settings-btn {
+    flex-shrink: 0; /* Prevents button from being squished or pushed out */
+    width: 36px;
+    height: 36px;
+}
+
 .menu-card-box.profile-preview-card:hover .profile-preview-inner {
     transform: translate(-5px, -5px); 
 }
@@ -1738,17 +1746,18 @@ body {
 
 @media (max-width: 480px) {
     .side-menu-reveal {
-        padding: 30px 16px;
-    }
+            width: 100vw;
+            padding: 40px 16px;
+        }
 
     .menu-card-box {
-        padding: 14px 16px;
         max-width: 100%;
+        padding: 16px 20px;
     }
 
     .profile-preview-inner {
-        padding: 10px 14px;
-        gap: 10px;
+        padding: 10px 12px;
+        gap: 8px;
     }
 
     .logout-form-wrapper {

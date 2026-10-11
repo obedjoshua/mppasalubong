@@ -5,12 +5,139 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Dashboard | Masaganang Pagpapala Pasalubong</title>
     <link rel="icon" type="image/x-icon" href="{{ asset('images/logo.png') }}">
-    
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&display=swap" rel="stylesheet">
-    
     <link rel="stylesheet" href="{{ asset('css/welcome.css') }}">
     <link rel="stylesheet" href="{{ asset('css/loader.css') }}">
     <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}">
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <style>
+        .otp-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(15, 23, 42, 0.5);
+            backdrop-filter: blur(4px);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s ease, visibility 0.2s ease;
+        }
+
+        .otp-modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .otp-modal-card {
+            background: #FFFFFF;
+            border-radius: 20px;
+            padding: 28px;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            transform: scale(0.95);
+            transition: transform 0.2s ease;
+        }
+
+        .otp-modal-overlay.active .otp-modal-card {
+            transform: scale(1);
+        }
+
+        .otp-modal-title {
+            font-family: 'Recoleta-Bold', serif;
+            font-size: 1.4rem;
+            color: #310669;
+            margin: 0 0 8px 0;
+        }
+
+        .otp-modal-desc {
+            font-family: 'Manrope', sans-serif;
+            font-size: 0.85rem;
+            color: #6B7280;
+            margin-bottom: 20px;
+        }
+
+        .otp-code-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #E5E7EB;
+            border-radius: 12px;
+            font-family: 'Manrope', sans-serif;
+            font-size: 1.2rem;
+            text-align: center;
+            letter-spacing: 6px;
+            font-weight: 800;
+            margin-bottom: 16px;
+            outline: none;
+            box-sizing: border-box;
+        }
+
+        .otp-code-input:focus {
+            border-color: #8A38F5;
+        }
+
+        .btn-modal-verify {
+            width: 100%;
+            background: #10B981;
+            color: #FFFFFF;
+            border: none;
+            padding: 12px;
+            border-radius: 10px;
+            font-family: 'Manrope', sans-serif;
+            font-weight: 800;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: background 0.15s ease;
+        }
+
+        .btn-modal-verify:hover {
+            background: #059669;
+        }
+
+        .btn-modal-close {
+            background: transparent;
+            border: none;
+            color: #9CA3AF;
+            font-size: 0.8rem;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 12px;
+        }
+
+        .btn-modal-close:hover {
+            color: #4B5563;
+        }
+
+        .resend-timer-box {
+            margin-top: 12px;
+            font-size: 0.8rem;
+            font-family: 'Manrope', sans-serif;
+            color: #6B7280;
+        }
+
+        .btn-resend-trigger {
+            background: none;
+            border: none;
+            color: #8A38F5;
+            font-weight: 800;
+            cursor: pointer;
+            text-decoration: underline;
+            padding: 0;
+        }
+
+        #recaptcha-container {
+            margin: 10px auto;
+            display: flex;
+            justify-content: center;
+        }
+    </style>
 </head>
 <body>
 
@@ -41,7 +168,6 @@
 
             $orderCount = $approvedOrders->count();
             
-            // Direct exclusive account assignment
             if (Auth::user()->email === 'obeddanieljoshua@gmail.com') {
                 $frameClass = 'frame_exclusive';
             } elseif ($orderCount >= 100) {
@@ -55,42 +181,34 @@
             }
         @endphp
 
-        <div class="dashboard-header-area" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 20px;">
-            <div class="user-greeting-box" style="display: flex; align-items: center; gap: 20px; flex-direction: row;">
-                <div class="avatar-wrapper">
-                    <img src="{{ !empty(Auth::user()->avatar) ? asset(Auth::user()->avatar) : asset('images/default-avatar.jpeg') }}" alt="Profile" class="profile-avatar">
-                    <img src="{{ asset('images/frames/' . (Auth::user()->selected_frame ?: $frameClass) . '.png') }}" alt="Frame" class="frame-overlay">
-                    @if(!Auth::user()->avatar)
-                        <div class="add-photo-badge" title="Add Profile Picture">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
-                                <line x1="12" y1="5" x2="12" y2="19"></line>
-                                <line x1="5" y1="12" x2="19" y2="12"></line>
-                            </svg>
-                        </div>
-                    @endif
-                </div>
+        <!-- 1. GREETING & HEADER AREA -->
+        <div class="dashboard-header-area">
+            <div class="user-greeting-box">
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <div class="avatar-wrapper">
+                        <img src="{{ !empty(Auth::user()->avatar) ? asset(Auth::user()->avatar) : asset('images/default-avatar.jpeg') }}" alt="Profile" class="profile-avatar">
+                        <img src="{{ asset('images/frames/' . (Auth::user()->selected_frame ?: $frameClass) . '.png') }}" alt="Frame" class="frame-overlay">
+                    </div>
 
-                <!-- Text block stacked horizontally next to avatar -->
-                <div style="display: flex; flex-direction: column;">
-                    <div class="greeting-time">{{ $greeting }}</div>
-                    <div class="name-score-wrapper">
-                        <h1 class="user-display-name">{{ explode(' ', Auth::user()->name)[0] }}</h1>
-                        
-                        <div class="order-count-wrapper">
-                            <span class="user-score">{{ $orderCount }}</span>
+                    <div style="display: flex; flex-direction: column;">
+                        <div class="greeting-time">{{ $greeting }}</div>
+                        <div class="name-score-wrapper">
+                            <h1 class="user-display-name">{{ explode(' ', Auth::user()->name)[0] }}</h1>
                             
-                            <div class="info-icon-wrapper">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                    <circle cx="12" cy="12" r="10"></circle>
-                                    <line x1="12" y1="16" x2="12" y2="12"></line>
-                                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
-                                </svg>
-                                <span class="tooltip-text">Total Approved Orders</span>
+                            <div class="order-count-wrapper">
+                                <span class="user-score">{{ $orderCount }}</span>
+                                <div class="info-icon-wrapper">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <line x1="12" y1="16" x2="12" y2="12"></line>
+                                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                                    </svg>
+                                    <span class="tooltip-text">Total Approved Orders</span>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-
             </div>
 
             <a href="{{ route('profile.edit') }}" class="edit-profile-pill">
@@ -107,49 +225,10 @@
             <a href="{{ route('home') }}" class="dash-action-btn dash-btn-order">Order Now</a>
         </div>
 
-        <div style="margin: 20px; background: #FFFFFF; border: 2.5px solid #E5E7EB; border-radius: 20px; padding: clamp(20px, 3vw, 32px);">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h2 style="font-family: 'Recoleta-Bold', serif; font-size: clamp(22px, 2.5vw, 28px); color: #310669; line-height: 1; margin: 0;">
-                    Badge Collection
-                </h2>
-                <span style="font-family: 'Manrope', sans-serif; font-size: 14px; font-weight: 800; color: #6B7280;">
-                    {{ Auth::user()->badges()->count() }} / {{ \App\Models\Badge::count() }} Unlocked
-                </span>
-            </div>
-
-            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 15px;">
-                @php
-                    $allBadges = \App\Models\Badge::all();
-                    $unlockedIds = Auth::user()->badges->pluck('id')->toArray();
-                @endphp
-
-                @forelse($allBadges as $badge)
-                    @php 
-                        $isUnlocked = in_array($badge->id, $unlockedIds); 
-                        $reqParts = explode('_', $badge->slug);
-                        $reqType = $reqParts[0];
-                        $reqNum = $reqParts[1] ?? 0;
-                        $reqText = $reqType === 'order' ? 'Orders' : ($reqType === 'shop' ? 'Purchases' : 'Posts');
-                        $statusText = $isUnlocked ? 'Unlocked!' : 'Goal: ' . $reqNum . ' ' . $reqText;
-                    @endphp
-                    
-                    <div class="badge-card {{ $isUnlocked ? 'unlocked' : 'locked' }}" title="{{ $badge->description }}">
-                        <img src="{{ asset($badge->icon_path) }}" alt="{{ $badge->name }}">
-                        <span class="badge-title">{{ $badge->name }}</span>
-                        <span class="badge-status">{{ $statusText }}</span>
-                    </div>
-                @empty
-                    <div style="grid-column: 1 / -1; text-align: center; font-family: 'Manrope', sans-serif; color: #9CA3AF; padding: 20px;">
-                        No badges found. Please run the Badge Seeder!
-                    </div>
-                @endforelse
-            </div>
-        </div>
-
-        <!-- 3. DASHBOARD CONTENT GRID -->
+        <!-- 3. MAIN DASHBOARD CONTENT GRID (ORDER TICKETS FIRST) -->
         <div class="dashboard-content-grid">
             
-            <!-- Left Column: Pending Tickets, Approved Orders, and Purchase History -->
+            <!-- Left Column: Tickets & History -->
             <div class="dash-column">
 
                 <!-- Order Inquiry Tickets Card -->
@@ -204,22 +283,15 @@
                     @endif
                 </div>
 
-                <!-- Purchase History Card -->
-                <div class="dash-card">
-                    <div class="dash-card-header">
-                        <h2 class="dash-card-title">Purchase History</h2>
-                    </div>
-                    <p class="empty-state-text">You have not made any purchases yet.</p>
-                </div>
             </div>
 
-            <!-- Right Column: Address & Links -->
+            <!-- Right Column: Address & Linked Accounts -->
             <div class="dash-column">
                 
                 <!-- Address Book -->
                 <div class="dash-card">
                     <div class="info-block" style="margin-bottom: 0;">
-                        <div class="dash-card-header" style="margin-bottom: 16px;">
+                        <div class="dash-card-header" style="margin-bottom: 12px;">
                             <h2 class="dash-card-title">Address Book</h2>
                             <a href="#" class="dash-link">Edit</a>
                         </div>
@@ -264,7 +336,7 @@
 
                         <!-- Phone OTP -->
                         <div class="linked-account" style="border-bottom: none; flex-direction: column; align-items: flex-start; gap: 12px;">
-                            <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+                            <div style="display: flex; justify-content: space-between; width: 100%; align-items: center; flex-wrap: wrap; gap: 8px;">
                                 <div class="account-type">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
                                     Phone
@@ -273,31 +345,84 @@
                                 @if(Auth::user()->phone)
                                     <span class="account-status status-connected">+63{{ Auth::user()->phone }}</span>
                                 @else
-                                    <form action="{{ route('profile.link.phone') }}" method="POST" style="display: flex; gap: 8px;">
-                                        @csrf
+                                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                                         <div class="phone-input-wrapper">
-                                            <input type="text" name="phone" class="phone-input-ph" placeholder="0912 345 6789" maxlength="11" inputmode="numeric" value="{{ old('phone') }}" required>
+                                            <input type="text" id="dash-phone-input" class="phone-input-ph" placeholder="0912 345 6789" maxlength="11" inputmode="numeric">
                                         </div>
-                                        <button type="submit" class="account-status status-disconnected">Send OTP</button>
-                                    </form>
+                                        <button type="button" id="trigger-send-otp-btn" class="account-status status-disconnected">Send OTP</button>
+                                    </div>
                                 @endif
                             </div>
 
-                            <!-- Success & Error Messages -->
-                            @if(session('success'))
-                                <div style="color: #10B981; font-size: 13px; font-weight: 700; background: #DEF7EC; padding: 6px 12px; border-radius: 6px; width: 100%;">
-                                    {{ session('success') }}
-                                </div>
-                            @endif
-                            @error('phone')
-                                <div style="color: #E92028; font-size: 13px; font-weight: 700; background: #FDE8E8; padding: 6px 12px; border-radius: 6px; width: 100%;">
-                                    {{ $message }}
-                                </div>
-                            @enderror
+                            <div id="recaptcha-container"></div>
+                            <p id="dash-phone-message" style="display: none; font-size: 13px; font-weight: 700; margin: 0; width: 100%; border-radius: 6px; padding: 6px 12px;"></p>
                         </div>
                     </div>
                 </div>
             </div>
+        </div>
+
+        <!-- 4. BADGE COLLECTION (MOVED BELOW ORDERS) -->
+        <div style="margin: 0 15px 60px 15px; background: #FFFFFF; border: 2.5px solid #E5E7EB; border-radius: 20px; padding: clamp(16px, 3vw, 28px);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 8px;">
+                <h2 style="font-family: 'Recoleta-Bold', serif; font-size: clamp(20px, 2.5vw, 26px); color: #310669; line-height: 1; margin: 0;">
+                    Badge Collection
+                </h2>
+                <span style="font-family: 'Manrope', sans-serif; font-size: 13px; font-weight: 800; color: #6B7280;">
+                    {{ Auth::user()->badges()->count() }} / {{ \App\Models\Badge::count() }} Unlocked
+                </span>
+            </div>
+
+            <!-- Responsive 3-to-6 Column Grid for Badges -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 10px;">
+                @php
+                    $allBadges = \App\Models\Badge::all();
+                    $unlockedIds = Auth::user()->badges->pluck('id')->toArray();
+                @endphp
+
+                @forelse($allBadges as $badge)
+                    @php 
+                        $isUnlocked = in_array($badge->id, $unlockedIds); 
+                        $reqParts = explode('_', $badge->slug);
+                        $reqType = $reqParts[0];
+                        $reqNum = $reqParts[1] ?? 0;
+                        $reqText = $reqType === 'order' ? 'Orders' : ($reqType === 'shop' ? 'Purchases' : 'Posts');
+                        $statusText = $isUnlocked ? 'Unlocked!' : 'Goal: ' . $reqNum . ' ' . $reqText;
+                    @endphp
+                    
+                    <div class="badge-card {{ $isUnlocked ? 'unlocked' : 'locked' }}" title="{{ $badge->description }}">
+                        <img src="{{ asset($badge->icon_path) }}" alt="{{ $badge->name }}">
+                        <span class="badge-title">{{ $badge->name }}</span>
+                        <span class="badge-status">{{ $statusText }}</span>
+                    </div>
+                @empty
+                    <div style="grid-column: 1 / -1; text-align: center; font-family: 'Manrope', sans-serif; color: #9CA3AF; padding: 20px;">
+                        No badges found. Please run the Badge Seeder!
+                    </div>
+                @endforelse
+            </div>
+        </div>
+
+    </div>
+
+    <!-- FIREBASE OTP VERIFICATION MODAL -->
+    <div class="otp-modal-overlay" id="otpModal">
+        <div class="otp-modal-card">
+            <h3 class="otp-modal-title">Enter Verification Code</h3>
+            <p class="otp-modal-desc">We sent a 6-digit code to <strong id="modal-phone-display">+63</strong></p>
+
+            <input type="text" id="modal-otp-code" class="otp-code-input" placeholder="000000" maxlength="6" inputmode="numeric">
+
+            <button type="button" id="modal-verify-btn" class="btn-modal-verify">Verify & Link Phone</button>
+
+            <div class="resend-timer-box">
+                <span id="modal-timer-text">Resend code in <strong id="modal-countdown">30</strong>s</span>
+                <button type="button" id="modal-resend-btn" class="btn-resend-trigger" style="display: none;">Resend Code</button>
+            </div>
+
+            <p id="modal-error-msg" style="display: none; color: #DC2626; font-size: 0.8rem; font-weight: 700; margin-top: 10px;"></p>
+
+            <button type="button" class="btn-modal-close" onclick="closeOtpModal()">Cancel</button>
         </div>
     </div>
     
@@ -305,23 +430,186 @@
 
     <script src="{{ asset('js/welcome.js') }}"></script>
     <script>
-        window.addEventListener('pageshow', function (event) {
-            const menuToggle = document.getElementById('menu-toggle');
-            if (menuToggle) menuToggle.checked = false;
-        });
-        
-        document.addEventListener("DOMContentLoaded", function () {
-            const menuToggle = document.getElementById('menu-toggle');
-            if (menuToggle) menuToggle.checked = false;
+        const firebaseConfig = {
+            apiKey: "{{ config('services.firebase.api_key') }}",
+            authDomain: "{{ config('services.firebase.auth_domain') }}",
+            projectId: "{{ config('services.firebase.project_id') }}",
+            storageBucket: "{{ config('services.firebase.storage_bucket') }}",
+            messagingSenderId: "{{ config('services.firebase.messaging_sender_id') }}",
+            appId: "{{ config('services.firebase.app_id') }}"
+        };
 
-            const menuLinks = document.querySelectorAll('#side-menu a, #side-menu div.login-box');
-            menuLinks.forEach(link => {
-                link.addEventListener('click', function() {
-                    if (menuToggle) menuToggle.checked = false;
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+
+        let confirmationResultObj = null;
+        let countdownTimer = null;
+
+        function setupRecaptcha() {
+            if (!window.recaptchaVerifier) {
+                window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
+                    'size': 'invisible',
+                    'callback': (response) => {}
                 });
-            });
+            }
+        }
 
-            // Global Loader logic
+        function openOtpModal(formattedPhone) {
+            document.getElementById('modal-phone-display').innerText = formattedPhone;
+            document.getElementById('otpModal').classList.add('active');
+            startResendTimer();
+        }
+
+        function closeOtpModal() {
+            document.getElementById('otpModal').classList.remove('active');
+            clearInterval(countdownTimer);
+        }
+
+        function startResendTimer() {
+            let secondsLeft = 30;
+            const timerText = document.getElementById('modal-timer-text');
+            const countdownEl = document.getElementById('modal-countdown');
+            const resendBtn = document.getElementById('modal-resend-btn');
+
+            timerText.style.display = 'inline';
+            resendBtn.style.display = 'none';
+            countdownEl.innerText = secondsLeft;
+
+            clearInterval(countdownTimer);
+
+            countdownTimer = setInterval(() => {
+                secondsLeft--;
+                countdownEl.innerText = secondsLeft;
+
+                if (secondsLeft <= 0) {
+                    clearInterval(countdownTimer);
+                    timerText.style.display = 'none';
+                    resendBtn.style.display = 'inline';
+                }
+            }, 1000);
+        }
+
+        function requestSmsOtp() {
+            const phoneInput = document.getElementById('dash-phone-input');
+            const sendBtn = document.getElementById('trigger-send-otp-btn');
+            const rawPhone = phoneInput ? phoneInput.value.trim() : '';
+
+            if (!rawPhone || rawPhone.length < 10) {
+                showDashMessage('Please enter a valid mobile number (e.g., 09123456789).', '#E92028', '#FDE8E8');
+                return;
+            }
+
+            const formattedPhone = '+63' + rawPhone.replace(/^0+/, '');
+            setupRecaptcha();
+            const appVerifier = window.recaptchaVerifier;
+
+            sendBtn.disabled = true;
+            sendBtn.innerText = 'Sending...';
+
+            firebase.auth().signInWithPhoneNumber(formattedPhone, appVerifier)
+                .then((confirmationResult) => {
+                    confirmationResultObj = confirmationResult;
+                    sendBtn.disabled = false;
+                    sendBtn.innerText = 'Send OTP';
+                    showDashMessage('', '', '');
+                    openOtpModal(formattedPhone);
+                })
+                .catch((error) => {
+                    console.error("Firebase Auth Error:", error);
+                    showDashMessage(error.message || 'Failed to send SMS.', '#E92028', '#FDE8E8');
+                    sendBtn.disabled = false;
+                    sendBtn.innerText = 'Send OTP';
+                });
+        }
+
+        function showDashMessage(msg, textColor, bgColor) {
+            const el = document.getElementById('dash-phone-message');
+            if (!el) return;
+
+            if (!msg) {
+                el.style.display = 'none';
+                return;
+            }
+            el.innerText = msg;
+            el.style.color = textColor;
+            el.style.background = bgColor;
+            el.style.display = 'block';
+        }
+
+        document.addEventListener("DOMContentLoaded", function () {
+            setupRecaptcha();
+
+            const sendBtn = document.getElementById('trigger-send-otp-btn');
+            if (sendBtn) {
+                sendBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    requestSmsOtp();
+                });
+            }
+
+            const resendBtn = document.getElementById('modal-resend-btn');
+            if (resendBtn) {
+                resendBtn.addEventListener('click', function() {
+                    requestSmsOtp();
+                });
+            }
+
+            const verifyBtn = document.getElementById('modal-verify-btn');
+            if (verifyBtn) {
+                verifyBtn.addEventListener('click', function() {
+                    const code = document.getElementById('modal-otp-code').value.trim();
+                    const errorEl = document.getElementById('modal-error-msg');
+
+                    if (!code || code.length !== 6) {
+                        errorEl.innerText = 'Please enter the 6-digit code.';
+                        errorEl.style.display = 'block';
+                        return;
+                    }
+
+                    this.disabled = true;
+                    this.innerText = 'Verifying...';
+
+                    confirmationResultObj.confirm(code).then((result) => {
+                        result.user.getIdToken().then(idToken => {
+                            const rawPhone = document.getElementById('dash-phone-input').value.trim();
+
+                            fetch("{{ route('profile.otp.verify') }}", {
+                                method: "POST",
+                                headers: {
+                                    "Content-Type": "application/json",
+                                    "X-CSRF-TOKEN": "{{ csrf_token() }}"
+                                },
+                                body: JSON.stringify({
+                                    phone: rawPhone,
+                                    id_token: idToken
+                                })
+                            })
+                            .then(res => res.json())
+                            .then(data => {
+                                if (data.success) {
+                                    window.location.reload();
+                                } else {
+                                    errorEl.innerText = data.message || 'Failed to link phone.';
+                                    errorEl.style.display = 'block';
+                                    this.disabled = false;
+                                    this.innerText = 'Verify & Link Phone';
+                                }
+                            });
+                        });
+                    }).catch((error) => {
+                        console.error("Verification Error:", error);
+                        errorEl.innerText = 'Invalid verification code. Please try again.';
+                        errorEl.style.display = 'block';
+                        this.disabled = false;
+                        this.innerText = 'Verify & Link Phone';
+                    });
+                });
+            }
+
+            const menuToggle = document.getElementById('menu-toggle');
+            if (menuToggle) menuToggle.checked = false;
+
             const loader = document.getElementById("globalLoader");
             const startTime = Date.now();
             function hideLoader() {

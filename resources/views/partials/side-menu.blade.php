@@ -39,12 +39,12 @@
             }
         @endphp
 
-        <div style="display: flex; gap: 4px; width: 100%; margin-bottom: -5px; box-sizing: border-box;">
-            <a href="{{ route('dashboard') }}" class="menu-card-box profile-preview-card" style="text-decoration: none; flex: 0 0 333px; width: 330px; min-width: 0; padding: 0; margin: 0; box-sizing: border-box;">
-                <div class="profile-preview-inner" style="display: flex; align-items: center; gap: 12px; padding: 12px 15px;">
-                    <div style="position: relative; width: 40px; height: 40px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;">
-                        <img src="{{ !empty(Auth::user()->avatar) ? asset(Auth::user()->avatar) : asset('images/default-avatar.jpeg') }}" alt="Profile" style="width: 32px; height: 32px; border-radius: 25%; object-fit: cover; z-index: 1;">
-                        <img src="{{ asset('images/frames/' . (Auth::user()->selected_frame ?: $frameClass) . '.png') }}" alt="Frame" style="position: absolute; top: 0; left: 0; width: 40px; height: 40px; z-index: 2; pointer-events: none; object-fit: contain;">   
+        <div style="display: flex; gap: 6px; width: 100%; max-width: 400px; margin-bottom: -5px; box-sizing: border-box;">
+            <a href="{{ route('dashboard') }}" class="menu-card-box profile-preview-card" style="text-decoration: none; flex: 1; min-width: 0; padding: 0; margin: 0; box-sizing: border-box;">
+                <div class="profile-preview-inner" style="display: flex; align-items: center; gap: 10px; padding: 12px; height: 100%; box-sizing: border-box;">
+                    <div style="position: relative; width: 38px; height: 38px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;">
+                        <img src="{{ !empty(Auth::user()->avatar) ? asset(Auth::user()->avatar) : asset('images/default-avatar.jpeg') }}" alt="Profile" style="width: 30px; height: 30px; border-radius: 25%; object-fit: cover; z-index: 1;">
+                        <img src="{{ asset('images/frames/' . (Auth::user()->selected_frame ?: $frameClass) . '.png') }}" alt="Frame" style="position: absolute; top: 0; left: 0; width: 38px; height: 38px; z-index: 2; pointer-events: none; object-fit: contain;">   
                         @if(!Auth::user()->avatar)
                             <div style="position: absolute; bottom: 2px; right: -2px; width: 12px; height: 12px; background-color: #8a38f5; border: 2px solid white; border-radius: 50%; z-index: 3; display: flex; align-items: center; justify-content: center; color: white;">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="width: 8px; height: 8px;">
@@ -55,15 +55,16 @@
                         @endif
                     </div>
                     <div class="profile-info" style="flex: 1; min-width: 0; overflow: hidden;">
-                        <span class="profile-name" style="font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">{{ Auth::user()->name }}</span>
-                        <span class="profile-action" style="font-size: 11px;">View Dashboard &rarr;</span>
+                        <span class="profile-name" style="font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">{{ Auth::user()->name }}</span>
+                        <span class="profile-action" style="font-size: 10px; white-space: nowrap;">View Dashboard &rarr;</span>
                     </div>
                 </div>
             </a>
 
-            <a href="{{ route('settings.index') }}" class="menu-card-box profile-preview-card" title="Settings" style="text-decoration: none; flex-shrink: 0; width: 64px; padding: 0; margin: 0; box-sizing: border-box; border-radius: 12px !important;">
+            <!-- Settings Button (Fixed compact size) -->
+            <a href="{{ route('settings.index') }}" class="menu-card-box profile-preview-card" title="Settings" style="text-decoration: none; flex: 0 0 52px; width: 52px; padding: 0; margin: 0; box-sizing: border-box; border-radius: 12px !important;">
                 <div class="profile-preview-inner" style="display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; padding: 0; border-radius: 12px;">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width: 26px; height: 26px; color: var(--text-black);">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width: 22px; height: 22px; color: var(--text-black);">
                         <circle cx="12" cy="12" r="3"></circle>
                         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l-.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l-.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06-.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
                     </svg>
