@@ -1,0 +1,347 @@
+/* =========================================
+   FONT IMPORTS (Placeholders for your local/custom fonts)
+   ========================================= */
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;800&family=League+Gothic&family=Mr+Dafoe&display=swap');
+
+/* Note: Add local @font-face rules for proprietary fonts like 
+   'Samsung Sharp Sans', 'Aloevera', 'Jomhuria', 'Ponomar', 'Niconne', 'Milker', 'Mango Grotesque' */
+
+/* =========================================
+   GLOBAL VARIABLES & RESET
+   ========================================= */
+:root {
+    --purple-main: #8A38F5;
+    --purple-dark: #51218F;
+    --brown-bg: #9D523C;
+    --teal-bg: #00B9BC;
+    --text-white: #FFFFFF;
+    --text-black: #000000;
+    --accent-yellow: #E5FC0F;
+    --accent-lime: #D5FF00;
+    --accent-red: #E92028;
+    --accent-blue: #245ABF;
+    
+    --width-desktop: 1728px;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background: #FFFFFF;
+    font-family: 'Manrope', sans-serif;
+    overflow-x: hidden;
+    display: flex;
+    justify-content: center;
+}
+
+/* Dashboard (guest) Container */
+.dashboard-container {
+    position: relative;
+    width: var(--width-desktop);
+    min-height: 5731px;
+    background: #FFFFFF;
+    overflow: hidden;
+}
+
+/* Image Placeholder Utility */
+.img-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.1);
+    border: 2px dashed #999;
+    color: #666;
+    font-weight: 800;
+    text-align: center;
+    width: 100%;
+    height: 100%;
+}
+
+/* =========================================
+   HEADER (Group 3)
+   ========================================= */
+.header {
+    position: absolute;
+    width: 1728px;
+    height: 187px;
+    left: 0px;
+    top: 0px;
+    background: var(--purple-main);
+    border-radius: 0px 0px 35px 35px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 140px;
+    z-index: 100;
+}
+
+.logo-text {
+    color: var(--text-white);
+    font-family: 'Manrope';
+    font-weight: 800;
+    font-size: 36px;
+    line-height: 49px;
+    letter-spacing: -0.03em;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.header-controls {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+}
+
+.icon-btn {
+    width: 78px;
+    height: 78px;
+    background: var(--text-white);
+    border: 3.46px solid var(--text-black);
+    border-radius: 15.17px;
+}
+
+.contact-btn {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    padding: 12px 32px;
+    gap: 10px;
+    width: 210.56px;
+    height: 78px;
+    background: var(--text-white);
+    border: 3.23px solid var(--text-black);
+    border-radius: 14.15px;
+    font-family: 'League Gothic';
+    font-size: 43.65px;
+    color: var(--text-black);
+}
+
+/* =========================================
+   HERO SECTION (Frame 6)
+   ========================================= */
+.hero-section {
+    position: absolute;
+    width: 1711px;
+    height: 719px;
+    left: 9px;
+    top: 198px;
+    background: var(--brown-bg);
+    border-radius: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.hero-title {
+    text-align: center;
+    color: var(--text-white);
+}
+
+.hero-title .t1 {
+    font-family: 'Manrope';
+    font-weight: 800;
+    font-size: 96px;
+    line-height: 131px;
+    letter-spacing: -0.03em;
+}
+
+.hero-title .t2 {
+    font-family: 'Manrope';
+    font-weight: 800;
+    font-size: 128px;
+    line-height: 175px;
+    letter-spacing: -0.03em;
+}
+
+.btn-shop-now {
+    width: 411.12px;
+    height: 139px;
+    background: var(--text-white);
+    border: 5.88px solid #723A2A;
+    border-radius: 73.55px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 40px;
+    margin-top: 40px;
+    font-family: 'Manrope';
+    font-weight: 800;
+    font-size: 58.84px;
+    letter-spacing: -0.05em;
+    color: var(--text-black);
+    cursor: pointer;
+}
+
+.btn-shop-now .arrow-circle {
+    width: 66.19px;
+    height: 66.19px;
+    background: #723A2A;
+    border-radius: 50%;
+}
+
+/* =========================================
+   3-COLUMN LOAVES GRID
+   ========================================= */
+.loaves-grid {
+    position: absolute;
+    width: 1711px;
+    height: 967px;
+    left: 9px;
+    top: 929px;
+    display: flex;
+    gap: 15px;
+}
+
+.loaf-card {
+    flex: 1;
+    border-radius: 20px;
+    position: relative;
+    overflow: hidden;
+    background: #F9F9F9; /* Placeholder bg */
+}
+
+.loaf-card-btn {
+    position: absolute;
+    width: 469px;
+    height: 110.41px;
+    bottom: 37px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--text-white);
+    border-radius: 122.68px;
+    display: flex;
+    align-items: center;
+}
+
+/* =========================================
+   MID SECTIONS
+   ========================================= */
+.classic-yema {
+    position: absolute;
+    width: 1030px;
+    height: 860px;
+    left: 9px;
+    top: 1911px;
+    background: var(--brown-bg);
+    border-radius: 20px;
+}
+
+.baking-greatness {
+    position: absolute;
+    width: 665px;
+    height: 494px;
+    left: 1055px;
+    top: 1911px;
+    background: #F6790B; /* Orange visual match */
+    border-radius: 20px;
+}
+
+.customize-cakes {
+    position: absolute;
+    width: 665px;
+    height: 1125px;
+    left: 1055px;
+    top: 2420px;
+    background: #1C0A33; /* Dark purple visual match */
+    border-radius: 20px;
+}
+
+.todays-pick {
+    position: absolute;
+    width: 1030px;
+    height: 762px;
+    left: 9px;
+    top: 2783px;
+    background: var(--teal-bg);
+    border-radius: 20px;
+}
+
+.testimonials {
+    position: absolute;
+    width: 802px;
+    height: 642px;
+    left: 9px;
+    top: 3562px;
+    background: linear-gradient(180deg, #610DCF 0%, #310669 100%);
+    border: 3px solid var(--text-black);
+    border-radius: 20px;
+}
+
+.triple-choco {
+    position: absolute;
+    width: 890px;
+    height: 641px;
+    left: 830px;
+    top: 3563px;
+    background: var(--brown-bg);
+    border-radius: 20px;
+}
+
+/* Typography for Mid Sections */
+.text-classic { font-family: 'Jomhuria'; font-size: 500px; color: var(--text-white); line-height: 500px; letter-spacing: -0.01em; position: absolute; left: 141px; top: -58px; }
+.text-yema { font-family: 'Mr Dafoe'; font-size: 225px; color: var(--text-white); line-height: 314px; letter-spacing: -0.03em; position: absolute; left: 563px; top: 158px; }
+.text-triple { font-family: 'Jomhuria'; font-size: 500px; color: var(--text-white); line-height: 500px; letter-spacing: -0.01em; position: absolute; left: -30px; top: -87px; }
+.text-choco { font-family: 'Mr Dafoe'; font-size: 225px; color: var(--text-white); line-height: 314px; letter-spacing: -0.03em; position: absolute; left: -12px; top: 129px; }
+
+/* =========================================
+   FOOTER (Frame 17)
+   ========================================= */
+.footer {
+    position: absolute;
+    width: 1736px;
+    height: 1183px;
+    left: -8px;
+    top: 4548px;
+    background: linear-gradient(353.77deg, #8A38F5 4.92%, #51218F 150.5%);
+}
+
+.footer-friends {
+    position: absolute;
+    width: 830px;
+    height: 128px;
+    left: 395px;
+    top: 355px;
+    font-family: 'Aloevera';
+    font-size: 128px;
+    line-height: 128px;
+    letter-spacing: -0.03em;
+    color: var(--accent-yellow);
+}
+
+.footer-text {
+    position: absolute;
+    width: 1054px;
+    height: 211px;
+    left: 399px;
+    top: 506px;
+    font-family: 'Samsung Sharp Sans', sans-serif;
+    font-weight: 500;
+    font-size: 36px;
+    line-height: 45px;
+    letter-spacing: -0.03em;
+    color: var(--accent-yellow);
+}
+
+.social-icons {
+    position: absolute;
+    display: flex;
+    gap: 20px;
+    left: 1307px;
+    top: 325px;
+}
+
+.social-circle {
+    width: 139px;
+    height: 142px;
+    border: 4px solid var(--accent-yellow);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}

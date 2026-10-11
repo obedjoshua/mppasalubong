@@ -1,0 +1,307 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+/* 1. Website Background is now White */
+body {
+    font-family: 'Manrope', sans-serif;
+    background-color: #FFFFFF;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* =========================================
+   BACK BUTTON
+   ========================================= */
+.back-btn {
+    position: absolute;
+    top: 30px;
+    left: 30px;
+    width: 50px;
+    height: 50px;
+    background-color: #FFFFFF;
+    border: 3px solid #000000;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 10;
+    transition: transform 0.1s ease, background-color 0.2s ease;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+.back-btn:active {
+    transform: scale(0.92);
+    background-color: #f0f0f0;
+}
+
+.login-wrapper {
+    display: flex;
+    width: 100%;
+    margin: 0 10px;
+    max-width: none;
+    height: calc(100vh - 20px);
+    max-height: none;
+    background-color: #8a38f5;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+}
+/* =========================================
+   ILLUSTRATION SIDE (Uncropped & Repositioned)
+   ========================================= */
+.illustration-side {
+    flex: 1.2;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: visible; 
+    padding: 20px;
+}
+
+.mascot-img {
+    width: 150%;
+    margin-top: 100px;
+    margin-left: 50px;
+    object-fit: scale-down; 
+    object-position: center;
+}
+
+/* =========================================
+   FORM SIDE
+   ========================================= */
+.form-side {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px 40px;
+}
+
+.form-container {
+    width: 100%;
+    max-width: 400px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* =========================================
+   BRAND HEADER
+   ========================================= */
+.brand-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.brand-icon {
+    height: 40px;
+    width: auto;
+    filter: brightness(1.5);
+}
+
+.brand-text {
+    display: flex;
+    flex-direction: column;
+    color: #FFFFFF;
+    font-weight: 800;
+    font-size: 15px;
+    line-height: 1;
+    letter-spacing: 0.02em;
+}
+
+/* =========================================
+   FORM ELEMENTS
+   ========================================= */
+.login-title {
+    color: #FFFFFF;
+    font-size: 22px;
+    font-weight: 800;
+    margin-bottom: 20px;
+}
+
+.login-form {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.input-field {
+    width: 100%;
+    height: 46px;
+    background: #F2F2F2;
+    border: none;
+    border-radius: 12px;
+    padding: 0 16px;
+    font-family: 'Manrope', sans-serif;
+    font-size: 14px;
+    color: #333;
+    outline: none;
+    -webkit-tap-highlight-color: rgba(204, 0, 255, 0.5);
+}
+
+.input-field::placeholder {
+    color: #A0A0A0;
+    font-weight: 600;
+}
+
+.password-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.forgot-link {
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 11px;
+    font-weight: 800;
+    color: #A0A0A0;
+    text-decoration: none;
+    letter-spacing: 0.05em;
+}
+
+/* 3D Gold Button */
+.primary-btn {
+    width: 100%;
+    height: 48px;
+    background-color: #D3A02C;
+    color: #fff;
+    font-family: 'Manrope', sans-serif;
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    border: none;
+    border-radius: 12px;
+    border-bottom: 4px solid #A67D1F;
+    cursor: pointer;
+    margin-top: 6px;
+    transition: transform 0.1s ease, filter 0.2s ease;
+}
+
+.primary-btn:active {
+    transform: translateY(4px);
+    border-bottom: 0px solid #A67D1F;
+    margin-bottom: 4px;
+}
+
+/* =========================================
+   DIVIDER
+   ========================================= */
+.divider {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    margin: 18px 0;
+    color: #FFFFFF;
+    font-size: 11px;
+    font-weight: 700;
+    opacity: 0.7;
+}
+
+.divider::before,
+.divider::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.4);
+    margin: 0 16px;
+}
+
+/* =========================================
+   SOCIAL BUTTONS
+   ========================================= */
+.social-login {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+}
+
+.social-btn {
+    flex: 1;
+    height: 44px;
+    background: #FFFFFF;
+    border: none;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-family: 'Manrope', sans-serif;
+    font-size: 12px;
+    font-weight: 800;
+    color: #4A4A4A;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    transition: background 0.2s ease;
+}
+
+.social-btn:hover {
+    background: #F8F8F8;
+}
+
+.social-btn svg {
+  height: 30px;
+  vertical-align: middle;
+  margin-right: 0px; /* Optional spacing */
+}
+
+/* =========================================
+   SIGN UP & LEGAL TEXT
+   ========================================= */
+.signup-prompt {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    margin-top: 24px;
+    color: #FFFFFF;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.signup-btn {
+    background: #FFFFFF;
+    color: #8a38f5;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 800;
+    padding: 8px 22px;
+    border-radius: 100px;
+    transition: transform 0.2s ease;
+}
+
+.signup-btn:hover {
+    transform: scale(1.05);
+}
+
+.legal-text {
+    margin-top: 20px;
+    text-align: center;
+    font-size: 10px;
+    line-height: 1.4;
+    color: rgba(255, 255, 255, 0.6);
+    max-width: 320px;
+}
+
+.legal-text a {
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.legal-text a:hover {
+    text-decoration: underline;
+}
