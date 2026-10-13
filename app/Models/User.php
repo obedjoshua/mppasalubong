@@ -9,6 +9,41 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * App\Models\User
+ *
+ * @property int $id
+ * @property string $name
+ * @property string $email
+ * @property string|null $password
+ * @property string|null $phone
+ * @property string|null $avatar
+ * @property string|null $google_id
+ * @property string|null $facebook_id
+ * @property string|null $selected_frame
+ * @property bool $two_factor_auth
+ * @property string|null $google2fa_secret
+ * @property string|null $theme
+ * @property string|null $timezone
+ * @property bool $notify_email
+ * @property bool $notify_push
+ * @property bool $notify_sms
+ * @property bool $marketing_emails
+ * @property bool $data_sharing
+ * @property string $role
+ * @property \Illuminate\Support\Carbon|null $email_verified_at
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * 
+ * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\Order[] $orders
+ * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\OrderTicket[] $tickets
+ * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\Wishlist[] $wishlists
+ * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\Notification[] $notifications
+ * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\Badge[] $badges
+ * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\Post[] $posts
+ * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\Comment[] $comments
+ * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\Purchase[] $purchases
+ */
 class User extends Authenticatable implements MustVerifyEmail 
 {
     /** @use HasFactory<UserFactory> */
@@ -23,6 +58,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'name',
         'email',
         'password',
+        'phone',
         'google_id',    // Added for Google OAuth
         'facebook_id',  // Added for Facebook OAuth
         'avatar',       // Added for profile pictures
