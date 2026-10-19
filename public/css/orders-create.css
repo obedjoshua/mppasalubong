@@ -56,7 +56,8 @@ body.orders-page {
 .create-wrapper .size-tray-label,
 .create-wrapper .tag-label-sub,
 .create-wrapper .ai-field-head,
-.create-wrapper .btn-add-large {
+.create-wrapper .btn-add-large,
+.create-wrapper .shop-name {
     font-family: 'Recoleta-Bold', Georgia, serif !important;
     letter-spacing: normal;
 }
@@ -64,7 +65,9 @@ body.orders-page {
 .create-wrapper .page-header p,
 .create-wrapper .qty-help-text,
 .create-wrapper .color-label,
-.create-wrapper .cal-day-label {
+.create-wrapper .cal-day-label,
+.create-wrapper .shop-address,
+.create-wrapper .shop-distance-tag {
     font-family: 'modern-bold', sans-serif !important;
 }
 
@@ -108,6 +111,538 @@ body.orders-page {
     font-weight: 700;
     color: #71717a;
     margin: 4px 0 0 0;
+}
+
+/* ==========================================================================
+   ANALOG CLOCK PICKER & POPOVER STYLES
+   ========================================================================== */
+
+/* Clock Picker Popover Box */
+.clock-picker-popover {
+    width: 310px !important;
+    padding: 20px 16px 14px 16px !important;
+    background: #ffffff !important;
+    border-radius: 24px !important;
+    border: 2px solid #e2e8f0 !important;
+    box-shadow: 0 16px 32px -8px rgba(0, 0, 0, 0.15) !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    box-sizing: border-box !important;
+    z-index: 1000 !important;
+}
+
+/* Header & Digital Display */
+.clock-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding: 0 4px;
+}
+
+.clock-digital-display {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.clock-digit-box {
+    background: #f1f5f9;
+    border: 2px solid transparent;
+    border-radius: 14px;
+    padding: 8px 14px;
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: #64748b;
+    cursor: pointer;
+    line-height: 1;
+    transition: all 0.15s ease;
+}
+
+.clock-digit-box.active {
+    background: #2563eb;
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+.clock-colon {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: #2563eb;
+}
+
+/* AM/PM Switcher Box */
+.clock-ampm-toggle {
+    display: flex;
+    flex-direction: column;
+    border: 2px solid #2563eb;
+    border-radius: 12px;
+    overflow: hidden;
+    width: 52px;
+}
+
+.ampm-btn {
+    background: #ffffff;
+    border: none;
+    padding: 6px 0;
+    font-size: 0.82rem;
+    font-weight: 800;
+    color: #2563eb;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.ampm-btn.active {
+    background: #2563eb;
+    color: #ffffff;
+}
+
+.ampm-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+/* Analog Dial Circle */
+.clock-dial-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 12px 0 20px 0;
+}
+
+.clock-dial-circle {
+    width: 240px;
+    height: 240px;
+    border-radius: 50%;
+    background: #ebf3ff;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.clock-pivot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #2563eb;
+    position: absolute;
+    z-index: 10;
+}
+
+.clock-hand {
+    position: absolute;
+    width: 2px;
+    height: 95px;
+    background: #2563eb;
+    bottom: 50%;
+    transform-origin: bottom center;
+    z-index: 5;
+    pointer-events: none;
+}
+
+/* Number Nodes on Clock Face */
+.clock-num {
+    position: absolute;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: #1e293b;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 8;
+    transition: all 0.15s ease;
+}
+
+.clock-num:hover:not(.disabled) {
+    background: #dbeafe;
+}
+
+.clock-num.selected {
+    background: #2563eb !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 10px rgba(37, 99, 235, 0.35);
+}
+
+.clock-num.disabled {
+    opacity: 0.2;
+    cursor: not-allowed;
+    color: #94a3b8;
+}
+
+/* Action Footer */
+.clock-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 16px;
+    padding-top: 8px;
+    border-top: 1px solid #f1f5f9;
+}
+
+.clock-action-btn {
+    border: none;
+    background: transparent;
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: #2563eb;
+    cursor: pointer;
+    padding: 6px 12px;
+    border-radius: 8px;
+    transition: background 0.15s ease;
+}
+
+.clock-action-btn:hover {
+    background: #eff6ff;
+}
+
+/* ==========================================================================
+   WIZARD STEPS & CARDS STYLING
+   ========================================================================== */
+
+.wizard-progress-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 28px;
+    background: #ffffff;
+    border: 2px solid #e2e8f0;
+    border-bottom: 4px solid #cbd5e1;
+    border-radius: 20px;
+    padding: 16px 24px;
+    gap: 12px;
+}
+
+.wizard-step-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    opacity: 0.45;
+    transition: all 0.2s ease;
+}
+
+.wizard-step-item.active {
+    opacity: 1;
+}
+
+.wizard-step-item.completed {
+    opacity: 0.85;
+}
+
+.step-num {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #e2e8f0;
+    color: #475569;
+    font-size: 0.95rem;
+    font-weight: 900;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.wizard-step-item.active .step-num {
+    background: #8A38F5;
+    color: #ffffff;
+    box-shadow: 0 0 0 3px rgba(138, 56, 245, 0.2);
+}
+
+.wizard-step-item.completed .step-num {
+    background: #10b981;
+    color: #ffffff;
+}
+
+.step-label {
+    font-family: 'Recoleta-Bold', Georgia, serif;
+    font-size: 1rem;
+    font-weight: 800;
+    color: #1e293b;
+}
+
+.wizard-step-divider {
+    flex: 1;
+    height: 3px;
+    background: #e2e8f0;
+    border-radius: 2px;
+    margin: 0 8px;
+}
+
+.wizard-step-panel {
+    display: none;
+    animation: stepFadeIn 0.25s ease-out;
+}
+
+.wizard-step-panel.active-step {
+    display: block;
+}
+
+@keyframes stepFadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.notice-banner-pickup {
+    background: #fef3c7;
+    border: 2px solid #f59e0b;
+    border-radius: 16px;
+    padding: 16px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    color: #92400e;
+}
+
+.notice-banner-pickup strong {
+    font-size: 1.05rem;
+    color: #78350f;
+}
+
+.notice-banner-pickup p {
+    margin: 4px 0 0 0;
+    font-size: 0.9rem;
+    font-weight: 700;
+}
+
+.notice-icon {
+    font-size: 1.6rem;
+    line-height: 1;
+}
+
+.location-search-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.search-results-popover {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    background: #ffffff;
+    border: 2px solid #cbd5e1;
+    border-radius: 16px;
+    box-shadow: 0 12px 24px -6px rgba(0,0,0,0.12);
+    z-index: 1000;
+    max-height: 220px;
+    overflow-y: auto;
+    display: none;
+}
+
+.search-results-popover.is-active {
+    display: block;
+}
+
+.search-result-item {
+    padding: 12px 16px;
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: #334155;
+    cursor: pointer;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.search-result-item:last-child {
+    border-bottom: none;
+}
+
+.search-result-item:hover {
+    background: #f3e8ff;
+    color: #8A38F5;
+}
+
+.map-picker-container {
+    margin-top: 16px;
+    border: 2px solid #e2e8f0;
+    border-radius: 20px;
+    overflow: hidden;
+    position: relative;
+    background: #f8fafc;
+}
+
+.free-map-view {
+    width: 100%;
+    height: 340px;
+    background: #e2e8f0;
+}
+
+.map-instruction-tag {
+    background: #ffffff;
+    padding: 10px 16px;
+    font-size: 0.85rem;
+    font-weight: 800;
+    color: #475569;
+    border-top: 2px solid #e2e8f0;
+    text-align: center;
+}
+
+.map-marker-user {
+    width: 24px;
+    height: 24px;
+    background-color: #3b82f6;
+    border: 3px solid #ffffff;
+    border-radius: 50%;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    cursor: grab;
+}
+
+.map-marker-shop {
+    font-size: 2rem;
+    line-height: 1;
+    cursor: pointer;
+    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.25));
+}
+
+.shop-selection-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+    margin-top: 16px;
+}
+
+.shop-card {
+    background: #ffffff;
+    border: 2px solid #e2e8f0;
+    border-bottom: 4px solid #cbd5e1;
+    border-radius: 18px;
+    padding: 18px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.shop-card:hover {
+    border-color: #8A38F5;
+    transform: translateY(-2px);
+}
+
+.shop-card.active {
+    background: #fdf4ff;
+    border-color: #8A38F5;
+    border-bottom: 5px solid #6b21a8;
+    box-shadow: 0 6px 16px rgba(138, 56, 245, 0.12);
+}
+
+.shop-card-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.shop-icon {
+    font-size: 2.2rem;
+    line-height: 1;
+}
+
+.shop-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.shop-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.shop-name {
+    font-size: 1.15rem;
+    font-weight: 900;
+    color: #1f2937;
+}
+
+.shop-rec-badge {
+    background: #10b981;
+    color: #ffffff;
+    font-size: 0.72rem;
+    font-weight: 900;
+    padding: 3px 8px;
+    border-radius: 10px;
+    text-transform: uppercase;
+}
+
+.shop-address {
+    font-size: 0.82rem;
+    color: #64748b;
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+.shop-distance-tag {
+    font-size: 0.85rem;
+    font-weight: 800;
+    color: #8A38F5;
+    background: #ffffff;
+    border: 1px solid #e9d5ff;
+    padding: 6px 12px;
+    border-radius: 12px;
+    text-align: center;
+}
+
+.category-selection-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 20px;
+    margin-top: 16px;
+}
+
+.category-select-card {
+    background: #ffffff;
+    border: 2px solid #e2e8f0;
+    border-bottom: 5px solid #cbd5e1;
+    border-radius: 20px;
+    padding: 28px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+}
+
+.category-select-card:hover {
+    border-color: #8A38F5;
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(138, 56, 245, 0.12);
+}
+
+.category-icon {
+    font-size: 3.5rem;
+    line-height: 1;
+}
+
+.category-title {
+    font-size: 1.25rem;
+    font-weight: 900;
+    color: #1f2937;
+}
+
+.category-desc {
+    font-size: 0.85rem;
+    color: #6b7280;
+    font-weight: 700;
+}
+
+.wizard-nav-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 24px;
+    margin-bottom: 40px;
 }
 
 .duo-3d-card {
@@ -175,7 +710,8 @@ body.orders-page {
     border-bottom: 4px solid #6b21a8 !important;
 }
 
-.dropdown-wrapper {
+.dropdown-wrapper,
+.duo-dropdown-wrapper {
     position: relative;
     width: 100%;
 }
@@ -208,7 +744,8 @@ body.orders-page {
     flex-shrink: 0;
 }
 
-.dropdown-wrapper.open .dropdown-caret {
+.dropdown-wrapper.open .dropdown-caret,
+.duo-dropdown-wrapper.open .dropdown-caret {
     transform: rotate(-135deg);
 }
 
@@ -229,7 +766,9 @@ body.orders-page {
     overflow-y: auto;
 }
 
-.dropdown-wrapper.open .duo-dropdown-popover {
+.duo-dropdown-popover.show,
+.dropdown-wrapper.open .duo-dropdown-popover,
+.duo-dropdown-wrapper.open .duo-dropdown-popover {
     display: block;
 }
 
@@ -452,7 +991,6 @@ body.orders-page {
     display: none;
 }
 
-/* Image Control Buttons Overlay */
 .image-actions-overlay {
     position: absolute;
     top: 12px;
@@ -504,7 +1042,6 @@ body.orders-page {
     background: #dc2626;
 }
 
-/* Modal Zoom Overlay */
 .image-zoom-modal {
     position: fixed;
     inset: 0;
@@ -761,10 +1298,6 @@ body.orders-page {
     font-size: 1.2rem;
     width: auto;
 }
-
-/* ==========================================================================
-   UTILITY CLASSES & DISPLAY OVERRIDES
-   ========================================================================== */
 
 .hidden-element {
     display: none !important;
@@ -1043,10 +1576,6 @@ body.orders-page {
     to { opacity: 1; transform: scale(1); }
 }
 
-/* ==========================================================================
-   RESPONSIVE MEDIA QUERIES
-   ========================================================================== */
-
 @media (max-width: 1024px) {
     .create-wrapper {
         padding: 20px;
@@ -1121,7 +1650,6 @@ body.orders-page {
         padding: 8px;
     }
 
-    /* Message row layout fix on small screens */
     .message-row {
         gap: 10px;
         padding: 12px;
@@ -1153,6 +1681,27 @@ body.orders-page {
         right: -8px;
         width: 36px;
         height: 36px;
+    }
+}
+
+@media (max-width: 640px) {
+    .wizard-progress-bar {
+        padding: 12px;
+    }
+    .step-label {
+        display: none;
+    }
+    .category-selection-grid {
+        grid-template-columns: 1fr;
+    }
+    .free-map-view {
+        height: 250px;
+    }
+    .location-search-row {
+        flex-direction: column;
+    }
+    .location-search-row .btn-duo-outline {
+        width: 100% !important;
     }
 }
 

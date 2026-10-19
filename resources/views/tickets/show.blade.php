@@ -44,18 +44,14 @@
     @php
         $pinnedPreviewImage = null;
 
-        if (session('just_submitted')) {
-            $pinnedPreviewImage = Cache::get('ticket_temp_img_' .$ticket->id . '_0') 
-                ?? Cache::get('ticket_temp_img_' . $ticket->id);
-        } else {
-            foreach ($ticket->items as$item) {
-                if (!empty($item->reference_image_path)) {
-                    $pinnedPreviewImage =$item->reference_image_path;
-                    break;
-                } elseif (!empty($item->custom_options['reference_image'])) {
-                    $pinnedPreviewImage =$item->custom_options['reference_image'];
-                    break;
-                }
+        foreach ($ticket->items as$item) {
+            $pinnedPreviewImage =$item->image_data 
+                ?? $item->r2_url 
+                ?? $item->reference_image_path 
+                ?? ($item->custom_options['reference_image'] ?? null);
+
+            if ($pinnedPreviewImage) {
+                break;
             }
         }
     @endphp
@@ -110,6 +106,14 @@
                     <strong style="font-family: 'Recoleta-Bold', serif;">Customer:</strong>
                     <span>{{ $ticket->customer_name }}</span>
 
+                    <strong style="font-family: 'Recoleta-Bold', serif;">Pickup Branch:</strong>
+                    <span style="color: #8a38f5; font-weight: bold;">
+                        📍 {{ $ticket->pickup_branch === 'san_jose' ? 'San Jose Branch' : 'Main Shop' }}
+                        @if($ticket->calculated_distance_km)
+                            <small style="color: #64748b; font-weight: normal;">({{ $ticket->calculated_distance_km }} km away)</small>
+                        @endif
+                    </span>
+
                     <strong style="font-family: 'Recoleta-Bold', serif;">Pickup Date:</strong>
                     <span>{{ \Carbon\Carbon::parse($ticket->pickup_date)->format('F j, Y') }}</span>
 
@@ -143,7 +147,7 @@
                     </tbody>
                 </table>
 
-                @if($isDashboardView && in_array(strtolower($ticket->status), ['pending staff review', 'pending']))
+                @if(isset($isDashboardView) && $isDashboardView && in_array(strtolower($ticket->status), ['pending staff review', 'pending']))
                     <div style="display: flex; gap: 10px; margin-top: 14px; padding-top: 10px; border-top: 1px dashed #e2e8f0;">
                         <a href="{{ route('orders.edit', $ticket->id) }}" style="flex: 1; text-align: center; background: #f3e8ff; color: #7e22ce; padding: 8px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 0.825rem;">
                             ✏️ Edit Inquiry
@@ -181,9 +185,25 @@
                         <span class="expanded-detail-value">{{ ucfirst($ticket->preferred_notification_channel ?? 'Email') }}</span>
                     </div>
                     <div class="expanded-detail-row">
-                        <span class="expanded-detail-label">Pickup Location:</span>
+                        <span class="expanded-detail-label">Assigned Branch:</span>
+                        <span class="expanded-detail-value">{{ $ticket->pickup_branch === 'san_jose' ? 'San Jose Branch' : 'Main Shop' }}</span>
+                    </div>
+                    <div class="expanded-detail-row">
+                        <span class="expanded-detail-label">Customer Location:</span>
                         <span class="expanded-detail-value">{{ $ticket->location_address ?? 'Store Pickup' }}</span>
                     </div>
+                    @if($ticket->customer_latitude &&$ticket->customer_longitude)
+                    <div class="expanded-detail-row">
+                        <span class="expanded-detail-label">Pinned Coordinates:</span>
+                        <span class="expanded-detail-value">{{ $ticket->customer_latitude }}, {{$ticket->customer_longitude }}</span>
+                    </div>
+                    @endif
+                    @if($ticket->calculated_distance_km)
+                    <div class="expanded-detail-row">
+                        <span class="expanded-detail-label">Distance to Branch:</span>
+                        <span class="expanded-detail-value">{{ $ticket->calculated_distance_km }} km</span>
+                    </div>
+                    @endif
 
                     <div class="expanded-section-title" style="margin-top: 10px;">🍰 Customization Breakdown</div>
                     @foreach($ticket->items as $index =>$item)
@@ -255,24 +275,19 @@
             @endforeach
         </div>
 
-        @foreach($ticket->items as $idx => $item)
+        @foreach($ticket->items as $idx =>$item)
             @php
-                // 1. Check indexed session cache, then general cache, then DB fields
-                $rawImage = session('just_submitted')
-                    ? (Cache::get('ticket_temp_img_' . $ticket->id . '_' . $idx) 
-                       ?? Cache::get('ticket_temp_img_' . $ticket->id))
-                    : ($item->reference_image_path ?? ($item->custom_options['reference_image'] ?? null));
-        
-                // 2. Safely resolve local paths, storage paths, and base64 string formats
-                $itemImage = null;
-                if (!empty($rawImage) && is_string($rawImage)) {
-                    if (str_starts_with($rawImage, 'data:image') || str_starts_with($rawImage, 'http://') || str_starts_with($rawImage, 'https://')) {
-                        $itemImage = $rawImage;
-                    } elseif (str_starts_with($rawImage, 'base64,')) {
-                        $itemImage = 'data:image/jpeg;' . $rawImage;
+                $itemImage =$item->image_data 
+                    ?? $item->r2_url 
+                    ?? $item->reference_image_path 
+                    ?? ($item->custom_options['reference_image'] ?? null);
+
+                if (!empty($itemImage) && is_string($itemImage) && !str_starts_with($itemImage, 'data:image') && !str_starts_with($itemImage, 'http://') && !str_starts_with($itemImage, 'https://')) {
+                    if (str_starts_with($itemImage, 'base64,')) {
+                        $itemImage = 'data:image/jpeg;' .$itemImage;
                     } else {
-                        $cleanPath = ltrim(str_replace('public/', '', $rawImage), '/');
-                        $itemImage = asset('storage/' . $cleanPath);
+                        $cleanPath = ltrim(str_replace('public/', '',$itemImage), '/');
+                        $itemImage = asset('storage/' .$cleanPath);
                     }
                 }
             @endphp
@@ -307,7 +322,7 @@
                         </div>
         
                         @if(!empty($item->custom_options))
-                            @foreach($item->custom_options as $key => $value)
+                            @foreach($item->custom_options as $key =>$value)
                                 @if(!in_array($key, ['reference_image', 'custom_tag_path']) && is_string($value))
                                     <div class="expanded-detail-row">
                                         <span class="expanded-detail-label">{{ ucfirst(str_replace('_', ' ', $key)) }}:</span>

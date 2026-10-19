@@ -1,8 +1,22 @@
+let currentStep = 1;
 let itemIndex = 0;
 let messageCounts = {};
 
 const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 const visionRoute = document.querySelector('meta[name="vision-route"]')?.getAttribute('content') || '/api/vision/extract-colors';
+
+// Admin closed/off dates configuration (YYYY-MM-DD format)
+window.closedDates = window.closedDates || [];
+
+// OpenFreeMap & MapLibre GL JS instances
+let map;
+let userMarker;
+let mainShopMarker;
+let sanJoseShopMarker;
+
+// Store Branch Coordinates
+const MAIN_SHOP_COORDS = { lat: 15.186235193924075, lng: 120.95964131143174 };
+const SAN_JOSE_COORDS = { lat: 15.147108923134585, lng: 120.97994960855327 };
 
 let selectedDateVal = null;
 let currCalDate = new Date();
@@ -10,24 +24,45 @@ let currCalDate = new Date();
 let selHour = "08";
 let selMin = "00";
 let selAmpm = "AM";
+let currentClockMode = 'hour'; // 'hour' or 'minute'
 
 document.addEventListener("DOMContentLoaded", () => {
     initZoomModal();
+    initOpenFreeMap();
 
-    // =========================================================================
-    // GOOGLE FORMS STYLE CLIENT-SIDE FORM VALIDATION INTERCEPTOR
-    // Prevents full-page browser reloads and token loss
-    // =========================================================================
     const ticketForm = document.getElementById('ticketForm');
     if (ticketForm) {
         ticketForm.addEventListener('submit', (e) => {
-            // Remove existing error states
             document.querySelectorAll('.input-error-highlight').forEach(el => el.classList.remove('input-error-highlight'));
             document.querySelectorAll('.inline-field-error').forEach(el => el.remove());
 
             let firstErrorElement = null;
 
-            // 1. Validate Pickup Date
+            // Validate Customer Location (Step 1)
+            const locationInput = document.getElementById('customerLocationInput');
+            if (!locationInput || !locationInput.value.trim()) {
+                e.preventDefault();
+                goToStep(1);
+                if (locationInput) {
+                    locationInput.classList.add('input-error-highlight');
+                    const err = document.createElement('span');
+                    err.className = 'inline-field-error';
+                    err.innerText = '⚠️ Please enter or select your location on the map.';
+                    locationInput.parentElement.appendChild(err);
+                    firstErrorElement = locationInput;
+                }
+            }
+
+            // Validate Items Container (Step 3)
+            const itemsContainer = document.getElementById('itemsContainer');
+            if (!firstErrorElement && itemsContainer && itemsContainer.children.length === 0) {
+                e.preventDefault();
+                goToStep(2);
+                alert("Please select at least one item before submitting.");
+                return;
+            }
+
+            // Validate Pickup Date (Step 4)
             const pickupDateInput = document.getElementById('hiddenDate');
             const wrapPickupDate = document.getElementById('wrap_pickup_date');
             if (!pickupDateInput || !pickupDateInput.value.trim()) {
@@ -36,59 +71,350 @@ document.addEventListener("DOMContentLoaded", () => {
                     wrapPickupDate.classList.add('input-error-highlight');
                     const err = document.createElement('span');
                     err.className = 'inline-field-error';
-                    err.innerText = '⚠️ Please select a pickup date before submitting.';
+                    err.innerText = '⚠️ Please select a valid pickup date.';
                     wrapPickupDate.parentElement.appendChild(err);
                     if (!firstErrorElement) firstErrorElement = wrapPickupDate;
                 }
             }
 
-            // 2. Validate Items Container (Must have at least 1 item card)
-            const itemsContainer = document.getElementById('itemsContainer');
-            if (itemsContainer && itemsContainer.children.length === 0) {
-                e.preventDefault();
-                const addCard = document.querySelector('.add-card-dashed');
-                if (addCard) {
-                    addCard.classList.add('input-error-highlight');
-                    const err = document.createElement('span');
-                    err.className = 'inline-field-error';
-                    err.innerText = '⚠️ Please add at least one item (Custom Cake, Cupcakes, etc.) to your ticket.';
-                    addCard.parentElement.insertBefore(err, addCard);
-                    if (!firstErrorElement) firstErrorElement = addCard;
-                }
-            }
-
-            // 3. Smooth scroll to first missing field
             if (firstErrorElement) {
                 firstErrorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
         });
     }
 
-    // =========================================================================
-    // EVENT LISTENERS & DROPDOWN BINDINGS
-    // =========================================================================
-    document.getElementById('trigger_pickup_date').onclick = () => toggleDropdown('wrap_pickup_date');
-    document.getElementById('trigger_pickup_time').onclick = () => toggleDropdown('wrap_pickup_time');
-    document.getElementById('btnPrevMonth').onclick = () => changeMonth(-1);
-    document.getElementById('btnNextMonth').onclick = () => changeMonth(1);
-    document.getElementById('btnConfirmTime').onclick = () => closeAllDropdowns();
+    const locInput = document.getElementById('customerLocationInput');
+    if (locInput) {
+        let debounceTimer;
+        locInput.addEventListener('input', (e) => {
+            clearTimeout(debounceTimer);
+            const query = e.target.value.trim();
+            if (query.length > 2) {
+                debounceTimer = setTimeout(() => searchAddressNominatim(query), 400);
+            } else {
+                hideSearchPopover();
+            }
+        });
+    }
 
-    document.getElementById('btnAddCake').onclick = () => addItemCard('custom_cake');
-    document.getElementById('btnAddCupcakes').onclick = () => addItemCard('cupcakes');
-    document.getElementById('btnAddLoaf').onclick = () => addItemCard('giveaway_loaf');
-    document.getElementById('btnAddRound').onclick = () => addItemCard('giveaway_round');
+    const btnGeo = document.getElementById('btnUseCurrentLocation');
+    if (btnGeo) {
+        btnGeo.onclick = useCurrentLocation;
+    }
 
-    // Add initial custom cake card on load
-    addItemCard('custom_cake');
+    const triggerDate = document.getElementById('trigger_pickup_date');
+    const triggerTime = document.getElementById('trigger_pickup_time');
+    const btnPrevMonth = document.getElementById('btnPrevMonth');
+    const btnNextMonth = document.getElementById('btnNextMonth');
+
+    if (triggerDate) triggerDate.onclick = () => toggleDropdown('wrap_pickup_date');
+    if (triggerTime) {
+        triggerTime.onclick = () => {
+            currentClockMode = 'hour';
+            renderTimeSelectors();
+            toggleDropdown('wrap_pickup_time');
+        };
+    }
+    if (btnPrevMonth) btnPrevMonth.onclick = () => changeMonth(-1);
+    if (btnNextMonth) btnNextMonth.onclick = () => changeMonth(1);
+
+    const btnCake = document.getElementById('btnAddCake');
+    const btnCup = document.getElementById('btnAddCupcakes');
+    const btnLoaf = document.getElementById('btnAddLoaf');
+    const btnRound = document.getElementById('btnAddRound');
+
+    if (btnCake) btnCake.onclick = () => addItemCard('custom_cake');
+    if (btnCup) btnCup.onclick = () => addItemCard('cupcakes');
+    if (btnLoaf) btnLoaf.onclick = () => addItemCard('giveaway_loaf');
+    if (btnRound) btnRound.onclick = () => addItemCard('giveaway_round');
+
     renderCalendar();
     renderTimeSelectors();
 
     document.addEventListener('click', (e) => {
-        if (!e.target.closest('.dropdown-wrapper')) {
+        if (!e.target.closest('.dropdown-wrapper') && !e.target.closest('.duo-dropdown-wrapper')) {
             closeAllDropdowns();
+        }
+        if (!e.target.closest('.search-input-wrapper')) {
+            hideSearchPopover();
         }
     });
 });
+
+// =========================================================================
+// OPENFREEMAP (MAPLIBRE GL JS) INTEGRATION
+// =========================================================================
+function initOpenFreeMap() {
+    const mapContainer = document.getElementById('openFreeMap');
+    if (!mapContainer) return;
+
+    const defaultCenter = [(MAIN_SHOP_COORDS.lng + SAN_JOSE_COORDS.lng) / 2, (MAIN_SHOP_COORDS.lat + SAN_JOSE_COORDS.lat) / 2];
+
+    map = new maplibregl.Map({
+        container: 'openFreeMap',
+        style: 'https://tiles.openfreemap.org/styles/liberty',
+        center: defaultCenter,
+        zoom: 13
+    });
+
+    map.addControl(new maplibregl.NavigationControl(), 'top-right');
+
+    const elUser = document.createElement('div');
+    elUser.className = 'map-marker-user';
+    elUser.title = 'Drag to your location pin';
+
+    userMarker = new maplibregl.Marker({ element: elUser, draggable: true })
+        .setLngLat(defaultCenter)
+        .addTo(map);
+
+    userMarker.on('dragend', () => {
+        const lngLat = userMarker.getLngLat();
+        updateCoordinates(lngLat.lat, lngLat.lng);
+        reverseGeocodeOpenStreetMap(lngLat.lat, lngLat.lng);
+        calculateNearestBranch(lngLat.lat, lngLat.lng);
+    });
+
+    const elMain = document.createElement('div');
+    elMain.className = 'map-marker-shop';
+    elMain.innerHTML = '🏬';
+    elMain.title = 'Main Shop';
+    mainShopMarker = new maplibregl.Marker({ element: elMain })
+        .setLngLat([MAIN_SHOP_COORDS.lng, MAIN_SHOP_COORDS.lat])
+        .setPopup(new maplibregl.Popup().setHTML('<strong>Main Shop</strong><br>San Miguel, Bulacan'))
+        .addTo(map);
+
+    const elSanJose = document.createElement('div');
+    elSanJose.className = 'map-marker-shop';
+    elSanJose.innerHTML = '🏪';
+    elSanJose.title = 'San Jose Branch';
+    sanJoseShopMarker = new maplibregl.Marker({ element: elSanJose })
+        .setLngLat([SAN_JOSE_COORDS.lng, SAN_JOSE_COORDS.lat])
+        .setPopup(new maplibregl.Popup().setHTML('<strong>San Jose Branch</strong><br>Norberto St., San Miguel'))
+        .addTo(map);
+
+    map.on('click', (e) => {
+        const { lng, lat } = e.lngLat;
+        userMarker.setLngLat([lng, lat]);
+        updateCoordinates(lat, lng);
+        reverseGeocodeOpenStreetMap(lat, lng);
+        calculateNearestBranch(lat, lng);
+    });
+
+    updateCoordinates(defaultCenter[1], defaultCenter[0]);
+    calculateNearestBranch(defaultCenter[1], defaultCenter[0]);
+}
+
+function updateCoordinates(lat, lng) {
+    const latInput = document.getElementById('latInput');
+    const lngInput = document.getElementById('lngInput');
+    if (latInput) latInput.value = lat;
+    if (lngInput) lngInput.value = lng;
+}
+
+function calculateDistanceKm(lat1, lon1, lat2, lon2) {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+}
+
+function calculateNearestBranch(userLat, userLng) {
+    const distMain = calculateDistanceKm(userLat, userLng, MAIN_SHOP_COORDS.lat, MAIN_SHOP_COORDS.lng);
+    const distSanJose = calculateDistanceKm(userLat, userLng, SAN_JOSE_COORDS.lat, SAN_JOSE_COORDS.lng);
+
+    const tagMain = document.getElementById('distTag_main');
+    const tagSanJose = document.getElementById('distTag_sanjose');
+    const badgeMain = document.getElementById('recBadge_main');
+    const badgeSanJose = document.getElementById('recBadge_sanjose');
+
+    if (tagMain) tagMain.textContent = `📍 Approx. ${distMain.toFixed(2)} km from your pin`;
+    if (tagSanJose) tagSanJose.textContent = `📍 Approx. ${distSanJose.toFixed(2)} km from your pin`;
+
+    if (distMain <= distSanJose) {
+        if (badgeMain) badgeMain.classList.remove('hidden-element');
+        if (badgeSanJose) badgeSanJose.classList.add('hidden-element');
+        selectShop('main_shop', false);
+    } else {
+        if (badgeSanJose) badgeSanJose.classList.remove('hidden-element');
+        if (badgeMain) badgeMain.classList.add('hidden-element');
+        selectShop('san_jose', false);
+    }
+}
+
+function selectShop(branchKey, panMap = true) {
+    const input = document.getElementById('pickupBranchInput');
+    if (input) input.value = branchKey;
+
+    const cardMain = document.getElementById('shopCard_main');
+    const cardSanJose = document.getElementById('shopCard_sanjose');
+
+    if (branchKey === 'main_shop') {
+        if (cardMain) cardMain.classList.add('active');
+        if (cardSanJose) cardSanJose.classList.remove('active');
+        if (panMap && map) map.flyTo({ center: [MAIN_SHOP_COORDS.lng, MAIN_SHOP_COORDS.lat], zoom: 16 });
+    } else {
+        if (cardSanJose) cardSanJose.classList.add('active');
+        if (cardMain) cardMain.classList.remove('active');
+        if (panMap && map) map.flyTo({ center: [SAN_JOSE_COORDS.lng, SAN_JOSE_COORDS.lat], zoom: 16 });
+    }
+}
+
+async function searchAddressNominatim(query) {
+    const popover = document.getElementById('searchResultsPopover');
+    if (!popover) return;
+
+    try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ', Bulacan, Philippines')}&limit=5`);
+        const data = await res.json();
+
+        popover.textContent = '';
+        if (data && data.length > 0) {
+            data.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'search-result-item';
+                div.textContent = item.display_name;
+                div.onclick = () => {
+                    const lat = parseFloat(item.lat);
+                    const lon = parseFloat(item.lon);
+                    
+                    const input = document.getElementById('customerLocationInput');
+                    if (input) input.value = item.display_name;
+
+                    if (map && userMarker) {
+                        map.flyTo({ center: [lon, lat], zoom: 16 });
+                        userMarker.setLngLat([lon, lat]);
+                    }
+
+                    updateCoordinates(lat, lon);
+                    calculateNearestBranch(lat, lon);
+                    hideSearchPopover();
+                };
+                popover.appendChild(div);
+            });
+            popover.classList.add('is-active');
+        } else {
+            hideSearchPopover();
+        }
+    } catch (err) {
+        hideSearchPopover();
+    }
+}
+
+function hideSearchPopover() {
+    const popover = document.getElementById('searchResultsPopover');
+    if (popover) {
+        popover.classList.remove('is-active');
+        popover.textContent = '';
+    }
+}
+
+async function reverseGeocodeOpenStreetMap(lat, lng) {
+    try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`);
+        const data = await res.json();
+        const input = document.getElementById('customerLocationInput');
+        if (input && data && data.display_name) {
+            input.value = data.display_name;
+        }
+    } catch (e) {
+        console.error("Geocoding failed", e);
+    }
+}
+
+function useCurrentLocation() {
+    const locInput = document.getElementById('customerLocationInput');
+    const btnGeo = document.getElementById('btnUseCurrentLocation');
+
+    if (!navigator.geolocation) {
+        alert("Geolocation is not supported by your browser.");
+        return;
+    }
+
+    if (btnGeo) {
+        btnGeo.disabled = true;
+        btnGeo.textContent = "📍 Locating...";
+    }
+
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+
+            if (map && userMarker) {
+                map.flyTo({ center: [lng, lat], zoom: 16 });
+                userMarker.setLngLat([lng, lat]);
+            }
+
+            updateCoordinates(lat, lng);
+            reverseGeocodeOpenStreetMap(lat, lng);
+            calculateNearestBranch(lat, lng);
+
+            if (btnGeo) {
+                btnGeo.disabled = false;
+                btnGeo.textContent = "📍 Use Current Location";
+            }
+        },
+        (error) => {
+            if (btnGeo) {
+                btnGeo.disabled = false;
+                btnGeo.textContent = "📍 Use Current Location";
+            }
+            alert("Unable to retrieve location. Please search manually in the field above.");
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+    );
+}
+
+function selectInitialCategory(type) {
+    addItemCard(type);
+    goToStep(3);
+}
+
+function goToStep(stepNum) {
+    if (stepNum === 2 || stepNum === 3 || stepNum === 4) {
+        const locInput = document.getElementById('customerLocationInput');
+        if (!locInput || !locInput.value.trim()) {
+            alert("Please provide your location in Step 1 first.");
+            goToStep(1);
+            return;
+        }
+    }
+
+    if (stepNum === 3 || stepNum === 4) {
+        const itemsContainer = document.getElementById('itemsContainer');
+        if (!itemsContainer || itemsContainer.children.length === 0) {
+            alert("Please pick an initial product category first.");
+            goToStep(2);
+            return;
+        }
+    }
+
+    currentStep = stepNum;
+
+    document.querySelectorAll('.wizard-step-panel').forEach(panel => {
+        panel.classList.remove('active-step');
+    });
+    const targetPanel = document.getElementById('wizardStep' + stepNum);
+    if (targetPanel) targetPanel.classList.add('active-step');
+
+    for (let i = 1; i <= 4; i++) {
+        const stepIndicator = document.getElementById('indicatorStep' + i);
+        if (stepIndicator) {
+            stepIndicator.classList.remove('active', 'completed');
+            if (i === stepNum) {
+                stepIndicator.classList.add('active');
+            } else if (i < stepNum) {
+                stepIndicator.classList.add('completed');
+            }
+        }
+    }
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
 
 function initZoomModal() {
     if (document.getElementById('imageZoomModal')) return;
@@ -150,7 +476,8 @@ function toggleDropdown(wrapperId) {
 }
 
 function closeAllDropdowns() {
-    document.querySelectorAll('.dropdown-wrapper').forEach(el => el.classList.remove('open'));
+    document.querySelectorAll('.dropdown-wrapper, .duo-dropdown-wrapper').forEach(el => el.classList.remove('open'));
+    document.querySelectorAll('.duo-dropdown-popover').forEach(p => p.classList.remove('show'));
 }
 
 function createCustomDropdownNode(wrapperId, hiddenName, options, defaultValue, onSelectCallback) {
@@ -233,6 +560,10 @@ function renderCalendar() {
         titleElem.textContent = monthNames[currCalDate.getMonth()] + ' ' + currCalDate.getFullYear();
     }
 
+    const minLeadDate = new Date();
+    minLeadDate.setDate(minLeadDate.getDate() + 2);
+    minLeadDate.setHours(0, 0, 0, 0);
+
     const firstDay = new Date(currCalDate.getFullYear(), currCalDate.getMonth(), 1).getDay();
     const daysInMonth = new Date(currCalDate.getFullYear(), currCalDate.getMonth() + 1, 0).getDate();
 
@@ -244,19 +575,42 @@ function renderCalendar() {
         btn.className = 'cal-date-btn';
         btn.textContent = day;
 
-        const dStr = currCalDate.getFullYear() + '-' + String(currCalDate.getMonth()+1).padStart(2,'0') + '-' + String(day).padStart(2,'0');
-        if (selectedDateVal === dStr) btn.classList.add('selected');
+        const iterDate = new Date(currCalDate.getFullYear(), currCalDate.getMonth(), day);
+        iterDate.setHours(0, 0, 0, 0);
 
-        btn.onclick = () => {
-            document.querySelectorAll('.cal-date-btn').forEach(b => b.classList.remove('selected'));
-            btn.classList.add('selected');
-            selectedDateVal = dStr;
-            const hiddenDate = document.getElementById('hiddenDate');
-            const dateTriggerText = document.getElementById('dateTriggerText');
-            if (hiddenDate) hiddenDate.value = selectedDateVal;
-            if (dateTriggerText) dateTriggerText.textContent = selectedDateVal;
-            closeAllDropdowns();
-        };
+        const mStr = String(currCalDate.getMonth() + 1).padStart(2, '0');
+        const dStrPad = String(day).padStart(2, '0');
+        const dStr = `${currCalDate.getFullYear()}-${mStr}-${dStrPad}`;
+
+        const isClosedByAdmin = window.closedDates && window.closedDates.includes(dStr);
+
+        if (iterDate < minLeadDate || isClosedByAdmin) {
+            btn.disabled = true;
+            btn.style.opacity = '0.3';
+            btn.style.cursor = 'not-allowed';
+            if (isClosedByAdmin) {
+                btn.title = "Date disabled by admin (Fully booked or closed)";
+                btn.style.background = "#fee2e2";
+                btn.style.color = "#991b1b";
+            }
+        } else {
+            if (selectedDateVal === dStr) btn.classList.add('selected');
+
+            btn.onclick = () => {
+                document.querySelectorAll('.cal-date-btn').forEach(b => b.classList.remove('selected'));
+                btn.classList.add('selected');
+                selectedDateVal = dStr;
+                
+                const hiddenDate = document.getElementById('hiddenDate');
+                const dateTriggerText = document.getElementById('dateTriggerText');
+                if (hiddenDate) hiddenDate.value = selectedDateVal;
+                if (dateTriggerText) dateTriggerText.textContent = selectedDateVal;
+
+                renderTimeSelectors();
+                closeAllDropdowns();
+            };
+        }
+
         grid.appendChild(btn);
     }
 }
@@ -266,42 +620,248 @@ function changeMonth(delta) {
     renderCalendar();
 }
 
+// =========================================================================
+// ANALOG CLOCK PICKER & DYNAMIC TIME RULES
+// =========================================================================
 function renderTimeSelectors() {
-    const hourContainer = document.getElementById('timeHourOpts');
-    if (hourContainer) {
-        hourContainer.textContent = '';
-        ["08", "09", "10", "11", "12", "01", "02", "03", "04", "05"].forEach(h => {
-            const item = document.createElement('div');
-            item.className = 'duo-option-item ' + (h === selHour ? 'selected' : '');
-            item.textContent = h;
-            item.onclick = () => { selHour = h; updateTimeDisplay(); renderTimeSelectors(); };
-            hourContainer.appendChild(item);
+    const popover = document.querySelector("#wrap_pickup_time .duo-dropdown-popover");
+    if (!popover) return;
+
+    popover.textContent = "";
+    popover.className = "duo-dropdown-popover clock-picker-popover";
+
+    // Determine if selected pickup date is Sunday
+    let isSunday = false;
+    if (selectedDateVal) {
+        const parts = selectedDateVal.split("-");
+        const selDateObj = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+        if (selDateObj.getDay() === 0) {
+            isSunday = true;
+        }
+    }
+
+    // Rules:
+    // Sunday: 07, 08, 09, 11 (Strictly AM)
+    // Mon-Sat: 07, 08, 09, 10, 11 (AM) & 12, 01, 02, 03, 04, 05 (PM)
+    let allowedHours = isSunday 
+        ? ["07", "08", "09", "11"] 
+        : ["07", "08", "09", "10", "11", "12", "01", "02", "03", "04", "05"];
+
+    if (isSunday) {
+        selAmpm = "AM";
+        if (!allowedHours.includes(selHour)) {
+            selHour = "07";
+        }
+    } else {
+        if (["01", "02", "03", "04", "05"].includes(selHour)) selAmpm = "PM";
+        else if (["07", "08", "09", "10", "11"].includes(selHour)) selAmpm = "AM";
+        else if (selHour === "12") selAmpm = "PM";
+    }
+
+    // Minute restrictions
+    let allowedMins = ["00", "30"];
+    if (isSunday && selHour === "11") allowedMins = ["00"];
+    if (!isSunday && selHour === "07" && selAmpm === "AM") allowedMins = ["30"];
+    if (!isSunday && selHour === "05" && selAmpm === "PM") allowedMins = ["00"];
+
+    if (!allowedMins.includes(selMin)) {
+        selMin = allowedMins[0];
+    }
+
+    // 1. Digital Display Header
+    const header = document.createElement("div");
+    header.className = "clock-header";
+
+    const displayBox = document.createElement("div");
+    displayBox.className = "clock-digital-display";
+
+    const hourBox = document.createElement("button");
+    hourBox.type = "button";
+    hourBox.className = `clock-digit-box ${currentClockMode === "hour" ? "active" : ""}`;
+    hourBox.textContent = selHour;
+    hourBox.onclick = (e) => {
+        e.stopPropagation();
+        currentClockMode = "hour";
+        renderTimeSelectors();
+    };
+
+    const colon = document.createElement("span");
+    colon.className = "clock-colon";
+    colon.textContent = ":";
+
+    const minBox = document.createElement("button");
+    minBox.type = "button";
+    minBox.className = `clock-digit-box ${currentClockMode === "minute" ? "active" : ""}`;
+    minBox.textContent = selMin;
+    minBox.onclick = (e) => {
+        e.stopPropagation();
+        currentClockMode = "minute";
+        renderTimeSelectors();
+    };
+
+    displayBox.appendChild(hourBox);
+    displayBox.appendChild(colon);
+    displayBox.appendChild(minBox);
+
+    const ampmToggle = document.createElement("div");
+    ampmToggle.className = "clock-ampm-toggle";
+
+    const amBtn = document.createElement("button");
+    amBtn.type = "button";
+    amBtn.className = `ampm-btn ${selAmpm === "AM" ? "active" : ""}`;
+    amBtn.textContent = "AM";
+    amBtn.disabled = isSunday;
+    amBtn.onclick = (e) => {
+        e.stopPropagation();
+        if (isSunday) return;
+        selAmpm = "AM";
+        if (["01", "02", "03", "04", "05"].includes(selHour)) selHour = "08";
+        renderTimeSelectors();
+    };
+
+    const pmBtn = document.createElement("button");
+    pmBtn.type = "button";
+    pmBtn.className = `ampm-btn ${selAmpm === "PM" ? "active" : ""}`;
+    pmBtn.textContent = "PM";
+    pmBtn.disabled = isSunday;
+    pmBtn.onclick = (e) => {
+        e.stopPropagation();
+        if (isSunday) return;
+        selAmpm = "PM";
+        if (["07", "08", "09", "10", "11"].includes(selHour)) selHour = "01";
+        renderTimeSelectors();
+    };
+
+    ampmToggle.appendChild(amBtn);
+    ampmToggle.appendChild(pmBtn);
+
+    header.appendChild(displayBox);
+    header.appendChild(ampmToggle);
+    popover.appendChild(header);
+
+    // 2. Analog Dial Container
+    const dialContainer = document.createElement("div");
+    dialContainer.className = "clock-dial-container";
+
+    const dialCircle = document.createElement("div");
+    dialCircle.className = "clock-dial-circle";
+
+    const pivot = document.createElement("div");
+    pivot.className = "clock-pivot";
+    dialCircle.appendChild(pivot);
+
+    if (currentClockMode === "hour") {
+        const hoursList = [12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+        const selectedInt = parseInt(selHour, 10);
+        const angleDeg = (selectedInt % 12) * 30;
+
+        const hand = document.createElement("div");
+        hand.className = "clock-hand";
+        hand.style.transform = `rotate(${angleDeg}deg)`;
+        dialCircle.appendChild(hand);
+
+        hoursList.forEach((h) => {
+            const hStr = String(h).padStart(2, "0");
+            const hNum = document.createElement("button");
+            hNum.type = "button";
+
+            const isAllowed = allowedHours.includes(hStr) &&
+                ((selAmpm === "AM" && ["07", "08", "09", "10", "11"].includes(hStr)) ||
+                 (selAmpm === "PM" && ["12", "01", "02", "03", "04", "05"].includes(hStr)));
+
+            hNum.className = `clock-num ${selHour === hStr ? "selected" : ""} ${!isAllowed ? "disabled" : ""}`;
+            hNum.textContent = h;
+
+            const angle = (h % 12) * 30 * (Math.PI / 180);
+            const radius = 95;
+            const x = Math.round(radius * Math.sin(angle));
+            const y = Math.round(-radius * Math.cos(angle));
+
+            hNum.style.transform = `translate(${x}px, ${y}px)`;
+
+            if (isAllowed) {
+                hNum.onclick = (e) => {
+                    e.stopPropagation();
+                    selHour = hStr;
+                    currentClockMode = "minute";
+                    renderTimeSelectors();
+                };
+            } else {
+                hNum.disabled = true;
+            }
+
+            dialCircle.appendChild(hNum);
+        });
+
+    } else {
+        const minsList = ["00", "30"];
+        const angleDeg = selMin === "00" ? 0 : 180;
+
+        const hand = document.createElement("div");
+        hand.className = "clock-hand";
+        hand.style.transform = `rotate(${angleDeg}deg)`;
+        dialCircle.appendChild(hand);
+
+        minsList.forEach((m) => {
+            const mNum = document.createElement("button");
+            mNum.type = "button";
+
+            const isAllowed = allowedMins.includes(m);
+            mNum.className = `clock-num ${selMin === m ? "selected" : ""} ${!isAllowed ? "disabled" : ""}`;
+            mNum.textContent = m;
+
+            const angle = (m === "00" ? 0 : 180) * (Math.PI / 180);
+            const radius = 95;
+            const x = Math.round(radius * Math.sin(angle));
+            const y = Math.round(-radius * Math.cos(angle));
+
+            mNum.style.transform = `translate(${x}px, ${y}px)`;
+
+            if (isAllowed) {
+                mNum.onclick = (e) => {
+                    e.stopPropagation();
+                    selMin = m;
+                    renderTimeSelectors();
+                };
+            } else {
+                mNum.disabled = true;
+            }
+
+            dialCircle.appendChild(mNum);
         });
     }
 
-    const minContainer = document.getElementById('timeMinOpts');
-    if (minContainer) {
-        minContainer.textContent = '';
-        ["00", "30"].forEach(m => {
-            const item = document.createElement('div');
-            item.className = 'duo-option-item ' + (m === selMin ? 'selected' : '');
-            item.textContent = m;
-            item.onclick = () => { selMin = m; updateTimeDisplay(); renderTimeSelectors(); };
-            minContainer.appendChild(item);
-        });
-    }
+    dialContainer.appendChild(dialCircle);
+    popover.appendChild(dialContainer);
 
-    const ampmContainer = document.getElementById('timeAmpmOpts');
-    if (ampmContainer) {
-        ampmContainer.textContent = '';
-        ["AM", "PM"].forEach(a => {
-            const item = document.createElement('div');
-            item.className = 'duo-option-item ' + (a === selAmpm ? 'selected' : '');
-            item.textContent = a;
-            item.onclick = () => { selAmpm = a; updateTimeDisplay(); renderTimeSelectors(); };
-            ampmContainer.appendChild(item);
-        });
-    }
+    // 3. Action Footer Buttons
+    const footer = document.createElement("div");
+    footer.className = "clock-footer";
+
+    const btnCancel = document.createElement("button");
+    btnCancel.type = "button";
+    btnCancel.className = "clock-action-btn cancel";
+    btnCancel.textContent = "Cancel";
+    btnCancel.onclick = (e) => {
+        e.stopPropagation();
+        closeAllDropdowns();
+    };
+
+    const btnOk = document.createElement("button");
+    btnOk.type = "button";
+    btnOk.className = "clock-action-btn ok";
+    btnOk.textContent = "OK";
+    btnOk.onclick = (e) => {
+        e.stopPropagation();
+        updateTimeDisplay();
+        closeAllDropdowns();
+    };
+
+    footer.appendChild(btnCancel);
+    footer.appendChild(btnOk);
+    popover.appendChild(footer);
+
+    updateTimeDisplay();
 }
 
 function updateTimeDisplay() {

@@ -16,6 +16,13 @@ class OrderTicket extends Model
     protected $keyType = 'string';
     public $incrementing = false;
 
+    protected $casts = [
+        'pickup_date' => 'date',
+        'customer_latitude' => 'float',
+        'customer_longitude' => 'float',
+        'calculated_distance_km' => 'float',
+    ];
+
     protected static function boot()
     {
         parent::boot();
@@ -51,5 +58,16 @@ class OrderTicket extends Model
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class, 'order_id');
+    }
+
+    /**
+     * Accessor for formatted branch title.
+     */
+    public function getBranchNameAttribute(): string
+    {
+        return match ($this->pickup_branch) {
+            'san_jose' => 'San Jose Branch',
+            default => 'Main Shop',
+        };
     }
 }

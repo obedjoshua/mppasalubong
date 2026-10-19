@@ -9,10 +9,14 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class OrderController extends Controller
 {
+    // Shop Coordinates Constants
+    const MAIN_SHOP = ['lat' => 15.186235193924075, 'lng' => 120.95964131143174];
+    const SAN_JOSE  = ['lat' => 15.147108923134585, 'lng' => 120.97994960855327];
+
     public function index()
     {
         $allTickets = OrderTicket::where('user_id', Auth::id())
@@ -31,9 +35,6 @@ class OrderController extends Controller
         return view('orders.index', compact('tickets', 'orders'));
     }
 
-    /**
-     * Display the dedicated tickets index view.
-     */
     public function ticketsIndex()
     {
         return view('tickets.index');
@@ -48,8 +49,12 @@ class OrderController extends Controller
     {
         $validated = $request->validate([
             'customer_name' => 'required|string|max:255',
+            'customer_location' => 'required|string',
+            'pickup_branch' => 'required|string|in:main_shop,san_jose',
             'pickup_date' => 'required|date',
             'pickup_time' => 'required|string',
+            'lat' => 'nullable|numeric',
+            'lng' => 'nullable|numeric',
             'additional_notes' => 'nullable|string',
             'items' => 'required|array|min:1',
             'items.*.item_type' => 'required|string',
@@ -59,9 +64,22 @@ class OrderController extends Controller
             'items.*.reference_image.required_if' => 'Please upload or select a reference image for your Custom Cake.'
         ]);
 
-        $tempImageBase64 = null;
+        $lat = $request->input('lat');
+        $lng = $request->input('lng');
+        $distKm = null;
 
-        $ticket = DB::transaction(function () use ($request, $validated, &$tempImageBase64) {
+        if ($lat && $lng) {
+            $targetBranch = $validated['pickup_branch'] === 'san_jose' 
+                ? self::SAN_JOSE 
+                : self::MAIN_SHOP;
+
+            $distKm = $this->calculateHaversineDistance(
+                $lat, $lng, 
+                $targetBranch['lat'], $targetBranch['lng']
+            );
+        }
+
+        $ticket = DB::transaction(function () use ($request, $validated, $lat, $lng, $distKm) {
             $user = Auth::user();
 
             $messengerId = $user ? ($user->facebook_messenger_id ?? null) : null;
@@ -73,7 +91,11 @@ class OrderController extends Controller
                 'customer_email' => $user ? $user->email : null,
                 'customer_phone' => $user ? ($user->phone ?? null) : null,
                 'facebook_messenger_id' => $messengerId,
-                'location_address' => $request->input('location_address', 'TBD'),
+                'pickup_branch' => $validated['pickup_branch'],
+                'location_address' => $validated['customer_location'],
+                'customer_latitude' => $lat,
+                'customer_longitude' => $lng,
+                'calculated_distance_km' => $distKm,
                 'pickup_date' => $validated['pickup_date'],
                 'pickup_time' => $validated['pickup_time'],
                 'additional_notes' => $validated['additional_notes'] ?? null,
@@ -85,20 +107,34 @@ class OrderController extends Controller
             foreach ($request->input('items') as $index => $itemData) {
                 $customTagUrl = null;
                 if ($request->hasFile("items.{$index}.tag_custom_image")) {
-                    $path = $request->file("items.{$index}.tag_custom_image")->store('orders/tags', 'r2');
-                    $baseUrl = rtrim(config('filesystems.disks.r2.url', env('CLOUDFLARE_R2_PUBLIC_URL')), '/');
-                    $customTagUrl = "{$baseUrl}/{$path}";
+                    try {
+                        $path = $request->file("items.{$index}.tag_custom_image")->store('orders/tags', 'r2');
+                        $baseUrl = rtrim(config('filesystems.disks.r2.url', env('CLOUDFLARE_R2_PUBLIC_URL')), '/');
+                        $customTagUrl = "{$baseUrl}/{$path}";
+                    } catch (\Exception $e) {
+                        Log::error('Tag R2 Upload Error: ' . $e->getMessage());
+                    }
                 }
 
+                $imageDataUri = null;
                 $referenceImgUrl = null;
+
                 if ($request->hasFile("items.{$index}.reference_image")) {
                     $file = $request->file("items.{$index}.reference_image");
-                    
-                    $tempImageBase64 = 'data:' . $file->getMimeType() . ';base64,' . base64_encode(file_get_contents($file->getRealPath()));
 
-                    $path = $file->store('orders/references', 'r2');
-                    $baseUrl = rtrim(config('filesystems.disks.r2.url', env('CLOUDFLARE_R2_PUBLIC_URL')), '/');
-                    $referenceImgUrl = "{$baseUrl}/{$path}";
+                    // 1. Primary: Convert image to Data URI for DB storage
+                    $base64 = base64_encode(file_get_contents($file->getRealPath()));
+                    $mime = $file->getClientMimeType();
+                    $imageDataUri = "data:{$mime};base64,{$base64}";
+
+                    // 2. Backup: Cloudflare R2 Upload
+                    try {
+                        $path = $file->store('orders/references', 'r2');
+                        $baseUrl = rtrim(config('filesystems.disks.r2.url', env('CLOUDFLARE_R2_PUBLIC_URL')), '/');
+                        $referenceImgUrl = "{$baseUrl}/{$path}";
+                    } catch (\Exception $e) {
+                        Log::error('R2 Backup Upload Error: ' . $e->getMessage());
+                    }
                 }
 
                 $customOptions = $itemData;
@@ -111,6 +147,8 @@ class OrderController extends Controller
                     'order_ticket_id' => $ticket->id,
                     'item_type' => $itemData['item_type'],
                     'quantity' => $itemData['quantity'],
+                    'image_data' => $imageDataUri, // Saved directly in DB
+                    'r2_url' => $referenceImgUrl,    // Backup R2 link
                     'reference_image_path' => $referenceImgUrl,
                     'custom_options' => $customOptions,
                 ]);
@@ -118,10 +156,6 @@ class OrderController extends Controller
 
             return $ticket;
         });
-
-        if ($tempImageBase64) {
-            Cache::put('ticket_temp_img_' . $ticket->id, $tempImageBase64, now()->addHours(24));
-        }
 
         return redirect()->route('orders.ticket', ['orderTicket' => $ticket->id])
                          ->with('just_submitted', true)
@@ -147,10 +181,7 @@ class OrderController extends Controller
             return back()->with('error', 'Only pending tickets can be cancelled.');
         }
     
-        // Store ticket ID in session for potential inline Undo
         session()->flash('ticket_cancelled_id', $orderTicket->id);
-        
-        Cache::forget('ticket_temp_img_' . $orderTicket->id);
         $orderTicket->delete();
     
         return redirect()->route('tickets.index')->with('ticket_cancelled', 'Ticket #' . $orderTicket->id . ' has been cancelled.');
@@ -166,5 +197,20 @@ class OrderController extends Controller
         }
     
         return redirect()->route('tickets.index')->with('error', 'Unable to restore ticket.');
+    }
+
+    private function calculateHaversineDistance($lat1, $lon1, $lat2, $lon2): float
+    {
+        $earthRadius = 6371; // radius in km
+        $dLat = deg2rad($lat2 - $lat1);
+        $dLon = deg2rad($lon2 - $lon1);
+
+        $a = sin($dLat / 2) * sin($dLat / 2) +
+             cos(deg2rad($lat1)) * cos(deg2rad($lat2)) *
+             sin($dLon / 2) * sin($dLon / 2);
+
+        $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+
+        return round($earthRadius * $c, 2);
     }
 }
