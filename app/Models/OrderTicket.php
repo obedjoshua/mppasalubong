@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\BranchMessage;
 
 class OrderTicket extends Model
 {
@@ -18,9 +19,14 @@ class OrderTicket extends Model
 
     protected $casts = [
         'pickup_date' => 'date',
+        'completed_at' => 'datetime',
+        'notification_sent_at' => 'datetime',
+        'total_price' => 'decimal:2',
+        'deposit_required' => 'decimal:2',
         'customer_latitude' => 'float',
         'customer_longitude' => 'float',
         'calculated_distance_km' => 'float',
+        'is_rescheduled' => 'boolean',
     ];
 
     protected static function boot()
@@ -45,6 +51,7 @@ class OrderTicket extends Model
         return $id;
     }
 
+    // Relationships
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
@@ -58,6 +65,16 @@ class OrderTicket extends Model
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class, 'order_id');
+    }
+
+    public function staffHandler(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'handled_by_staff_id');
+    }
+
+    public function branchMessages(): HasMany
+    {
+        return $this->hasMany(BranchMessage::class, 'order_ticket_id', 'id');
     }
 
     /**
