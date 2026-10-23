@@ -1,8 +1,7 @@
 <?php
 
-namespace App\Http\Controllers\Staff;
+namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -12,6 +11,7 @@ class ProductCatalogController extends Controller
     public function index()
     {
         $products = Product::orderBy('created_at', 'desc')->paginate(12);
+
         return view('staff.products.index', compact('products'));
     }
 
@@ -29,7 +29,7 @@ class ProductCatalogController extends Controller
 
         Product::create([
             'name' => $validated['name'],
-            'slug' => Str::slug($validated['name']) . '-' . Str::random(5),
+            'slug' => Str::slug($validated['name']).'-'.Str::random(5),
             'category' => $validated['category'],
             'price' => $validated['price'],
             'stock_quantity' => $validated['stock_quantity'],

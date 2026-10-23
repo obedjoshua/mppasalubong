@@ -10,11 +10,11 @@ class Badge extends Model
     use HasFactory;
 
     protected $fillable = [
-        'name', 
-        'slug', 
-        'icon_path', 
-        'description', 
-        'order_requirement'
+        'name',
+        'slug',
+        'icon_path',
+        'description',
+        'order_requirement',
     ];
 
     public function users()

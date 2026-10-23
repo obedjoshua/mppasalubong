@@ -1,8 +1,7 @@
 <?php
 
-namespace App\Http\Controllers\Staff;
+namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
 use App\Models\OrderTicket;
 use Illuminate\Http\Request;
 
@@ -47,13 +46,13 @@ class ProductionScheduleController extends Controller
             'pickup_date' => $validated['new_date'],
             'pickup_time' => $validated['new_time'],
             'is_rescheduled' => true,
-            'staff_notes' => ($ticket->staff_notes ? $ticket->staff_notes . "\n" : "") . 
-                             "[Rescheduled on " . now()->format('M d, Y h:i A') . "] Reason: " . ($validated['reason'] ?? 'Staff capacity adjustment.'),
+            'staff_notes' => ($ticket->staff_notes ? $ticket->staff_notes."\n" : '').
+                             '[Rescheduled on '.now()->format('M d, Y h:i A').'] Reason: '.($validated['reason'] ?? 'Staff capacity adjustment.'),
         ]);
 
         return response()->json([
             'success' => true,
-            'message' => "Order #{$ticket->id} rescheduled to {$validated['new_date']} at {$validated['new_time']}"
+            'message' => "Order #{$ticket->id} rescheduled to {$validated['new_date']} at {$validated['new_time']}",
         ]);
     }
 

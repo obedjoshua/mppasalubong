@@ -1,0 +1,9 @@
+/* Terminal Settings & Shift Management */
+.settings-card {
+    background-color: #ffffff;
+    border-radius: 0.75rem;
+}
+
+.list-group-item {
+    border-color: #f1f5f9;
+}

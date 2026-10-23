@@ -26,33 +26,40 @@ class LoginController extends Controller
             $request->session()->regenerate();
             $user = Auth::user();
 
-            // 1. Check Login Frequency (Challenge Logic)
-            $cacheKey = 'login_count_' . $user->id;
-            $loginCount = Cache::get($cacheKey, 0);
+            // 1. Check Login Frequency (Challenge Logic - Active in Production Only)
+            if (config('app.env') === 'production') {
+                $cacheKey = 'login_count_'.$user->id;
+                $loginCount = Cache::get($cacheKey, 0);
 
-            if ($loginCount >= 3) {
-                // Generate a 6-digit code
-                $code = rand(100000, 999999);
-                Cache::put('challenge_code_' . $user->id, $code, now()->addMinutes(15));
-                
-                // Set session lock
-                $request->session()->put('requires_challenge', true);
+                if ($loginCount >= 3) {
+                    // Generate a 6-digit code
+                    $code = rand(100000, 999999);
+                    Cache::put('challenge_code_'.$user->id, $code, now()->addMinutes(15));
 
-                // Email the code to the user via Mailjet
-                Mail::raw("Your Masaganang Pagpapala security code is: {$code}", function ($message) use ($user) {
-                    $message->to($user->email)
+                    // Set session lock
+                    $request->session()->put('requires_challenge', true);
+
+                    // Email the code to the user via Mailjet
+                    Mail::raw("Your Masaganang Pagpapala security code is: {$code}", function ($message) use ($user) {
+                        $message->to($user->email)
                             ->subject('Security Alert: Verification Required');
-                });
+                    });
 
-                return redirect()->route('challenge.notice');
+                    return redirect()->route('challenge.notice');
+                }
+
+                // Increment login counter (Expires after 12 hours)
+                Cache::put($cacheKey, $loginCount + 1, now()->addHours(12));
             }
-
-            // Increment login counter (Expires after 12 hours)
-            Cache::put($cacheKey, $loginCount + 1, now()->addHours(12));
 
             // 2. Standard Email Verification Check
             if (is_null($user->email_verified_at)) {
                 return redirect()->route('verification.notice');
+            }
+
+            // 3. Systemic Role Routing Check
+            if ($user->role === 'staff' || str_ends_with($user->email, '@masagana.ph') || (isset($user->is_staff) && $user->is_staff)) {
+                return redirect()->intended(route('staff.dashboard'));
             }
 
             return redirect()->intended('/orders');

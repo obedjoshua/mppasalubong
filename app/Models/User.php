@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
-use Illuminate\Contracts\Auth\MustVerifyEmail; 
 use Database\Factories\UserFactory;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
 /**
  * App\Models\User
@@ -31,20 +33,19 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property bool $marketing_emails
  * @property bool $data_sharing
  * @property string $role
- * @property \Illuminate\Support\Carbon|null $email_verified_at
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * 
- * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\Order[] $orders
- * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\OrderTicket[] $tickets
- * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\Wishlist[] $wishlists
- * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\Notification[] $notifications
- * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\Badge[] $badges
- * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\Post[] $posts
- * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\Comment[] $comments
- * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\Purchase[] $purchases
+ * @property Carbon|null $email_verified_at
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read Collection|Order[] $orders
+ * @property-read Collection|OrderTicket[] $tickets
+ * @property-read Collection|Wishlist[] $wishlists
+ * @property-read Collection|Notification[] $notifications
+ * @property-read Collection|Badge[] $badges
+ * @property-read Collection|Post[] $posts
+ * @property-read Collection|Comment[] $comments
+ * @property-read Collection|Purchase[] $purchases
  */
-class User extends Authenticatable implements MustVerifyEmail 
+class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
@@ -62,7 +63,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'google_id',    // Added for Google OAuth
         'facebook_id',  // Added for Facebook OAuth
         'avatar',       // Added for profile pictures
-        
+
         // --- Added for Settings, Roles, and 2FA ---
         'selected_frame',
         'two_factor_auth',
@@ -104,7 +105,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
     // --- Original Relationships ---
 
-    public function orders()
+    public function orders(): HasMany
     {
         return $this->hasMany(Order::class);
     }
@@ -117,34 +118,34 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(OrderTicket::class, 'user_id');
     }
 
-    public function wishlists()
+    public function wishlists(): HasMany
     {
         return $this->hasMany(Wishlist::class);
     }
 
-    public function notifications()
+    public function notifications(): HasMany
     {
         return $this->hasMany(Notification::class);
     }
 
     // --- New Community & Shop Relationships ---
 
-    public function badges()
+    public function badges(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
     {
         return $this->belongsToMany(Badge::class, 'user_badge')->withPivot('unlocked_at');
     }
 
-    public function posts()
+    public function posts(): HasMany
     {
         return $this->hasMany(Post::class);
     }
 
-    public function comments()
+    public function comments(): HasMany
     {
         return $this->hasMany(Comment::class);
     }
 
-    public function purchases()
+    public function purchases(): HasMany
     {
         return $this->hasMany(Purchase::class); // Assuming you create a Purchase model later for the Shop
     }
@@ -154,28 +155,30 @@ class User extends Authenticatable implements MustVerifyEmail
     public function checkAndAwardBadges()
     {
         // Count up all the user's activities
-        $orderCount    = $this->orders()->count();
-        $purchaseCount = method_exists($this, 'purchases') ? $this->purchases()->count() : 0;
-        $postCount     = $this->posts()->count();
+        $orderCount = $this->orders()->count();
+        $purchaseCount = $this->purchases()->count();
+        $postCount = $this->posts()->count();
 
         $earnedIds = [];
 
         // 1. Custom Order Badges
-        $orderBadges = \App\Models\Badge::where('order_requirement', '>', 0)
+        $orderBadges = Badge::where('order_requirement', '>', 0)
             ->where('order_requirement', '<=', $orderCount)
             ->pluck('id')->toArray();
         $earnedIds = array_merge($earnedIds, $orderBadges);
 
         // 2. Shop Purchase Badges
-        $shopBadges = \App\Models\Badge::where('slug', 'like', 'shop_%')->get()->filter(function ($badge) use ($purchaseCount) {
+        $shopBadges = Badge::where('slug', 'like', 'shop_%')->get()->filter(function ($badge) use ($purchaseCount) {
             $req = (int) str_replace('shop_', '', $badge->slug);
+
             return $purchaseCount >= $req;
         })->pluck('id')->toArray();
         $earnedIds = array_merge($earnedIds, $shopBadges);
 
         // 3. Community Post Badges
-        $postBadges = \App\Models\Badge::where('slug', 'like', 'post_%')->get()->filter(function ($badge) use ($postCount) {
+        $postBadges = Badge::where('slug', 'like', 'post_%')->get()->filter(function ($badge) use ($postCount) {
             $req = (int) str_replace('post_', '', $badge->slug);
+
             return $postCount >= $req;
         })->pluck('id')->toArray();
         $earnedIds = array_merge($earnedIds, $postBadges);
@@ -187,7 +190,7 @@ class User extends Authenticatable implements MustVerifyEmail
         }
 
         // Sync with the database safely
-        if (!empty($syncData)) {
+        if (! empty($syncData)) {
             $this->badges()->syncWithoutDetaching($syncData);
         }
     }

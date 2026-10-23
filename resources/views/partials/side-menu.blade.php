@@ -10,15 +10,15 @@
         <div class="side-menu-links">
             <!-- Dynamic order link based on authentication status -->
             @auth
-                <a href="{{ route('orders.index') }}">order</a>
+                <a href="{{ route('orders.index') }}" wire:navigate>order</a>
             @else
-                <a href="{{ route('guest.order.prompt') }}">order</a>
+                <a href="{{ route('guest.order.prompt') }}" wire:navigate>order</a>
             @endauth
             
-            <a href="{{ route('shop') }}">shop</a>
+            <a href="{{ route('shop') }}" wire:navigate>shop</a>
             <a href="#">about us</a>
             <a href="#">join us</a>
-            <a href="{{ route('community.index') }}">community</a>
+            <a href="{{ route('community.index') }}" wire:navigate>community</a>
         </div>
     </div>
     
@@ -40,7 +40,7 @@
         @endphp
 
         <div style="display: flex; gap: 6px; width: 100%; max-width: 400px; margin-bottom: -5px; box-sizing: border-box;">
-            <a href="{{ route('dashboard') }}" class="menu-card-box profile-preview-card" style="text-decoration: none; flex: 1; min-width: 0; padding: 0; margin: 0; box-sizing: border-box;">
+            <a href="{{ route('dashboard') }}" wire:navigate class="menu-card-box profile-preview-card" style="text-decoration: none; flex: 1; min-width: 0; padding: 0; margin: 0; box-sizing: border-box;">
                 <div class="profile-preview-inner" style="display: flex; align-items: center; gap: 10px; padding: 12px; height: 100%; box-sizing: border-box;">
                     <div style="position: relative; width: 38px; height: 38px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;">
                         <img src="{{ !empty(Auth::user()->avatar) ? asset(Auth::user()->avatar) : asset('images/default-avatar.jpeg') }}" alt="Profile" style="width: 30px; height: 30px; border-radius: 25%; object-fit: cover; z-index: 1;">
@@ -62,7 +62,7 @@
             </a>
 
             <!-- Settings Button (Fixed compact size) -->
-            <a href="{{ route('settings.index') }}" class="menu-card-box profile-preview-card" title="Settings" style="text-decoration: none; flex: 0 0 52px; width: 52px; padding: 0; margin: 0; box-sizing: border-box; border-radius: 12px !important;">
+            <a href="{{ route('settings.index') }}" wire:navigate class="menu-card-box profile-preview-card" title="Settings" style="text-decoration: none; flex: 0 0 52px; width: 52px; padding: 0; margin: 0; box-sizing: border-box; border-radius: 12px !important;">
                 <div class="profile-preview-inner" style="display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; padding: 0; border-radius: 12px;">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width: 22px; height: 22px; color: var(--text-black);">
                         <circle cx="12" cy="12" r="3"></circle>
@@ -85,7 +85,7 @@
         </form>
     @else
         <div class="menu-card-box login-box">
-            <a href="{{ route('login') }}">log in</a>
+            <a href="{{ route('login') }}" wire:navigate>log in</a>
         </div>
     @endauth
 </nav>

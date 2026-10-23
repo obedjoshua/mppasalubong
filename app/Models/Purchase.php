@@ -32,6 +32,6 @@ class Purchase extends Model
     public function product()
     {
         // If your shop items model is named differently (e.g., ShopItem::class), update it here.
-        return $this->belongsTo(Product::class); 
+        return $this->belongsTo(Product::class);
     }
 }

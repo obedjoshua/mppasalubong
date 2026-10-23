@@ -10,10 +10,10 @@ class Comment extends Model
     use HasFactory;
 
     protected $fillable = [
-        'post_id', 
+        'post_id',
         'user_id',
         'parent_id', // For threaded replies
-        'comment'
+        'comment',
     ];
 
     public function post()
@@ -26,11 +26,13 @@ class Comment extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function replies() {
+    public function replies()
+    {
         return $this->hasMany(Comment::class, 'parent_id')->oldest();
     }
-    
-    public function parent() {
+
+    public function parent()
+    {
         return $this->belongsTo(Comment::class, 'parent_id');
     }
 }

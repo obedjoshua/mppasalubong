@@ -1,5 +1,5 @@
 <header class="header">
-    <a href="{{ route('home') }}" class="header-left" style="text-decoration: none; color: inherit;">
+    <a href="{{ route('home') }}" wire:navigate class="header-left" style="text-decoration: none; color: inherit;">
         <img src="{{ asset('images/logo.png') }}" alt="Masaganang Pagpapala Logo" class="logo-img">
         <div class="logo-text-stacked">
             <span>MASAGANANG</span>
@@ -16,13 +16,13 @@
         </label>
 
         @auth
-            <a href="{{ route('wishlist.index') }}" class="icon-btn" title="Wishlist" style="text-decoration: none; color: inherit;">
+            <a href="{{ route('wishlist.index') }}" wire:navigate class="icon-btn" title="Wishlist" style="text-decoration: none; color: inherit;">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 65%; height: 65%;">
                     <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
                 </svg>
             </a>
 
-            <a href="{{ route('notifications.index') }}" class="icon-btn" title="Notifications" style="text-decoration: none; color: inherit;">
+            <a href="{{ route('notifications.index') }}" wire:navigate class="icon-btn" title="Notifications" style="text-decoration: none; color: inherit;">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 65%; height: 65%;">
                     <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
                     <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
@@ -52,7 +52,7 @@
         <div style="background-color: #FEF2F2; border-bottom: 2px solid #FCA5A5; padding: 12px 24px; text-align: center; color: #991B1B; font-family: 'Manrope', sans-serif; font-weight: 700; font-size: 0.875rem;">
             Please verify your email address to unlock all account features.
             
-            <a href="{{ route('verification.notice') }}" style="color: #7F1D1D; text-decoration: underline; font-weight: 800; margin-left: 8px;">
+            <a href="{{ route('verification.notice') }}" wire:navigate style="color: #7F1D1D; text-decoration: underline; font-weight: 800; margin-left: 8px;">
                 Resend verification email
             </a>
         </div>

@@ -12,7 +12,7 @@ return new class extends Migration
             $table->id();
             $table->string('ticket_id')->unique(); // e.g., TKT-A1B2C3
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
-            
+
             // Customer Info
             $table->string('customer_name');
             $table->string('location_address');

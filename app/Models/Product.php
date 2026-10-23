@@ -6,20 +6,19 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Models\BranchStockTransfer;
 
 class Product extends Model
 {
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'name', 
-        'slug', 
+        'name',
+        'slug',
         'category',
-        'description', 
-        'price', 
-        'image_url', 
-        'stock_quantity', 
+        'description',
+        'price',
+        'image_url',
+        'stock_quantity',
         'stock_status',
         'is_active',
         'attributes',

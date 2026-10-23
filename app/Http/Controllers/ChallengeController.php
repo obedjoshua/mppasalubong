@@ -12,9 +12,10 @@ class ChallengeController extends Controller
     // Show the challenge form
     public function notice(Request $request)
     {
-        if (!$request->session()->has('requires_challenge')) {
+        if (! $request->session()->has('requires_challenge')) {
             return redirect()->route('dashboard');
         }
+
         return view('auth.challenge');
     }
 
@@ -24,13 +25,13 @@ class ChallengeController extends Controller
         $request->validate(['code' => 'required|numeric']);
         $user = Auth::user();
 
-        $storedCode = Cache::get('challenge_code_' . $user->id);
+        $storedCode = Cache::get('challenge_code_'.$user->id);
 
         if ($storedCode && $storedCode == $request->code) {
             // Success: Remove the lock and reset the login counter
             $request->session()->forget('requires_challenge');
-            Cache::forget('login_count_' . $user->id);
-            Cache::forget('challenge_code_' . $user->id);
+            Cache::forget('login_count_'.$user->id);
+            Cache::forget('challenge_code_'.$user->id);
 
             return redirect()->intended('/orders');
         }
@@ -43,7 +44,7 @@ class ChallengeController extends Controller
     {
         $user = Auth::user();
         $code = rand(100000, 999999);
-        Cache::put('challenge_code_' . $user->id, $code, now()->addMinutes(15));
+        Cache::put('challenge_code_'.$user->id, $code, now()->addMinutes(15));
 
         Mail::raw("Your new Masaganang Pagpapala security code is: {$code}", function ($message) use ($user) {
             $message->to($user->email)->subject('New Security Code');

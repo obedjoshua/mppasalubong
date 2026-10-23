@@ -4,8 +4,10 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
-    public function up(): void {
+return new class extends Migration
+{
+    public function up(): void
+    {
         Schema::create('order_tickets', function (Blueprint $table) {
             $table->string('id', 11)->primary(); // 11-character Base64 Primary Key
             $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
@@ -19,7 +21,8 @@ return new class extends Migration {
         });
     }
 
-    public function down(): void { 
-        Schema::dropIfExists('order_tickets'); 
+    public function down(): void
+    {
+        Schema::dropIfExists('order_tickets');
     }
 };

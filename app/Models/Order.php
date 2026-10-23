@@ -9,11 +9,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Order extends Model
 {
     protected $fillable = [
-        'user_id', 
+        'user_id',
         'order_ticket_id', // Added so order tickets can be linked upon approval
-        'order_number', 
-        'total_amount', 
-        'status'
+        'order_number',
+        'total_amount',
+        'status',
     ];
 
     /**

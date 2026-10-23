@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class BranchStockTransfer extends Model
 {
@@ -28,17 +29,17 @@ class BranchStockTransfer extends Model
         'received_at' => 'datetime',
     ];
 
-    public function product()
+    public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
     }
 
-    public function requestedBy()
+    public function requestedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'requested_by_staff_id');
     }
 
-    public function fulfilledBy()
+    public function fulfilledBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'fulfilled_by_staff_id');
     }

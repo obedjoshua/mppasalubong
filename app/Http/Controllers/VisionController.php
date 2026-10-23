@@ -19,18 +19,18 @@ class VisionController extends Controller
             $image = $request->file('image');
 
             // Save the original uploaded image directly to public storage
-            $filename = 'cake_' . Str::random(10) . '.' . $image->getClientOriginalExtension();
-            Storage::disk('public')->put('custom_orders/' . $filename, file_get_contents($image->getRealPath()));
-            $imageUrl = asset('storage/custom_orders/' . $filename);
+            $filename = 'cake_'.Str::random(10).'.'.$image->getClientOriginalExtension();
+            Storage::disk('public')->put('custom_orders/'.$filename, file_get_contents($image->getRealPath()));
+            $imageUrl = asset('storage/custom_orders/'.$filename);
 
             // --- SEND DIRECTLY TO GROQ FOR VISION ANALYSIS ---
             $imageData = base64_encode(file_get_contents($image->getRealPath()));
             $mimeType = $image->getMimeType();
 
-            $apiKey = env('GROQ_API_KEY');
+            $apiKey = config('services.groq.api_key');
 
-            if (!$apiKey) {
-                throw new \Exception("Groq API key is missing in the .env file.");
+            if (! $apiKey) {
+                throw new \Exception('Groq API key is missing in the .env file.');
             }
 
             $prompt = 'You are an expert, highly precise bakery and cake analysis AI vision model.
@@ -69,43 +69,44 @@ class VisionController extends Controller
             }';
 
             $groqResponse = Http::withHeaders([
-                'Authorization' => 'Bearer ' . $apiKey,
+                'Authorization' => 'Bearer '.$apiKey,
                 'Content-Type' => 'application/json',
             ])
-            ->retry(3, 2000, function ($exception, $request) {
-                return $exception->response && $exception->response->serverError();
-            })
-            ->post('https://api.groq.com/openai/v1/chat/completions', [
-                'model' => 'qwen/qwen3.8-27b',
-                'messages' => [
-                    [
-                        'role' => 'user',
-                        'content' => [
-                            ['type' => 'text', 'text' => $prompt],
-                            ['type' => 'image_url', 'image_url' => ['url' => 'data:' . $mimeType . ';base64,' . $imageData]]
-                        ]
-                    ]
-                ],
-                'response_format' => ['type' => 'json_object'],
-                'temperature' => 0.1
-            ]);
+                ->retry(3, 2000, function ($exception, $request) {
+                    return $exception instanceof \Illuminate\Http\Client\RequestException
+                        && $exception->response->serverError();
+                })
+                ->post('https://api.groq.com/openai/v1/chat/completions', [
+                    'model' => 'qwen/qwen3.8-27b',
+                    'messages' => [
+                        [
+                            'role' => 'user',
+                            'content' => [
+                                ['type' => 'text', 'text' => $prompt],
+                                ['type' => 'image_url', 'image_url' => ['url' => 'data:'.$mimeType.';base64,'.$imageData]],
+                            ],
+                        ],
+                    ],
+                    'response_format' => ['type' => 'json_object'],
+                    'temperature' => 0.1,
+                ]);
 
             if ($groqResponse->failed()) {
-                throw new \Exception('Groq API Error: ' . $groqResponse->body());
+                throw new \Exception('Groq API Error: '.$groqResponse->body());
             }
 
             $responseData = $groqResponse->json();
             $aiOutput = $responseData['choices'][0]['message']['content'] ?? null;
 
-            if (!$aiOutput) {
-                throw new \Exception("Could not parse the response from Groq.");
+            if (! $aiOutput) {
+                throw new \Exception('Could not parse the response from Groq.');
             }
 
             $cleanJson = trim(str_replace(['```json', '```'], '', $aiOutput));
             $decodedJson = json_decode($cleanJson, true);
 
             if (json_last_error() !== JSON_ERROR_NONE) {
-                throw new \Exception("Invalid JSON returned by Groq: " . json_last_error_msg());
+                throw new \Exception('Invalid JSON returned by Groq: '.json_last_error_msg());
             }
 
             // Return saved image URL and AI extraction results
@@ -118,7 +119,7 @@ class VisionController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
