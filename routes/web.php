@@ -1,22 +1,30 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\SocialAuthController;
-use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\WishlistController;
-use App\Http\Controllers\NotificationController;
-use App\Http\Controllers\SettingsController;
-use App\Http\Controllers\TwoFactorController;
-use App\Http\Controllers\CommunityController;
-use App\Http\Controllers\OrderController;
-use App\Http\Controllers\VisionController;
-use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use App\Http\Controllers\ChallengeController;
+use App\Http\Controllers\CommunityController;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\OrderController;
+use App\Http\Controllers\ProductionScheduleController;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\QrVerificationController;
+use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\StaffSessionController;
+use App\Http\Controllers\StockTransferController;
+use App\Http\Controllers\TicketReviewController;
+use App\Http\Controllers\TwoFactorController;
+use App\Http\Controllers\VisionController;
+use App\Http\Controllers\WalkInOrderController;
+use App\Http\Controllers\WishlistController;
+use App\Http\Middleware\EnsureStaffTerminalUnlocked;
+use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Route;
 
+// Public & Auth Routes
 Route::get('/', fn () => view('welcome'))->name('home');
 Route::get('/shop', fn () => view('shop'))->name('shop');
 
@@ -34,17 +42,20 @@ Route::get('/auth/google', [SocialAuthController::class, 'redirectToGoogle'])->n
 Route::get('/auth/google/callback', [SocialAuthController::class, 'handleGoogleCallback']);
 
 Route::get('/email/verify', function () {
-    if (!Auth::check()) {
+    if (! Auth::check()) {
         return redirect()->route('login');
     }
+
     return view('auth.verify-email');
 })->name('verification.notice');
 
 Route::get('/email/verify/{id}/{hash}', function (EmailVerificationRequest $request) {
     $request->fulfill();
+
     return redirect()->route('orders.index');
 })->middleware(['auth', 'signed'])->name('verification.verify');
 
+// Customer Routes
 Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', function () {
         return view('user.dashboard');
@@ -60,7 +71,6 @@ Route::middleware(['auth'])->group(function () {
 });
 
 Route::middleware(['web', 'auth'])->group(function () {
-
     Route::get('/challenge', [ChallengeController::class, 'notice'])->name('challenge.notice');
     Route::post('/challenge/verify', [ChallengeController::class, 'verify'])->name('challenge.verify');
     Route::post('/challenge/resend', [ChallengeController::class, 'resend'])->name('challenge.resend');
@@ -69,18 +79,19 @@ Route::middleware(['web', 'auth'])->group(function () {
         if ($request->session()->has('requires_challenge')) {
             return redirect()->route('challenge.notice');
         }
+
         return $next($request);
     }], function () {
-
-        Route::get('/dashboard', function () { return view('user.dashboard'); })->name('dashboard');
+        Route::get('/dashboard', function () {
+            return view('user.dashboard');
+        })->name('dashboard');
         Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
     });
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/profile/edit', [ProfileController::class, 'update'])->name('profile.update');
-    
-    // Phone Link & Firebase Verification Routes
+
     Route::post('/dashboard/link-phone', [ProfileController::class, 'sendPhoneOtp'])->name('profile.link.phone');
     Route::get('/dashboard/verify-otp', [ProfileController::class, 'showOtpForm'])->name('profile.otp.form');
     Route::post('/dashboard/verify-otp', [ProfileController::class, 'verifyOtp'])->name('profile.otp.verify');
@@ -115,6 +126,35 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/community/post/{id}', [CommunityController::class, 'destroy'])->name('community.post.destroy');
 });
 
+// Staff Portal Routes
+Route::middleware(['auth', 'staff', EnsureStaffTerminalUnlocked::class])
+    ->prefix('staff')
+    ->name('staff.')
+    ->group(function () {
+        Route::get('/dashboard', [TicketReviewController::class, 'index'])->name('dashboard');
+
+        Route::get('/qr-scanner', [QrVerificationController::class, 'index'])->name('qr.index');
+        Route::post('/qr-scanner/verify', [QrVerificationController::class, 'verify'])->name('qr.verify');
+        Route::post('/qr-scanner/complete', [QrVerificationController::class, 'completeHandoff'])->name('qr.complete');
+
+        Route::get('/walkin-intake', [WalkInOrderController::class, 'create'])->name('walkin.create');
+        Route::post('/walkin-intake', [WalkInOrderController::class, 'processForm'])->name('walkin.process');
+
+        Route::get('/schedule', [ProductionScheduleController::class, 'index'])->name('schedule.index');
+
+        Route::get('/transfers', [StockTransferController::class, 'index'])->name('transfers.index');
+        Route::post('/transfers', [StockTransferController::class, 'storeTransfer'])->name('transfers.store');
+        Route::post('/messages', [StockTransferController::class, 'sendMessage'])->name('messages.send');
+
+        Route::get('/settings', [SettingsController::class, 'index'])->name('settings');
+
+        // Terminal Session Lock Wall Routes
+        Route::post('/session/lock', [StaffSessionController::class, 'lockSession'])->name('session.lock');
+        Route::get('/session/locked', [StaffSessionController::class, 'showLockWall'])->name('session.locked');
+        Route::post('/session/unlock', [StaffSessionController::class, 'unlockSession'])->name('session.unlock');
+    });
+
+// API & Community Public Routes
 Route::get('/guest/order-prompt', function () {
     return view('guest.order-prompt');
 })->name('guest.order.prompt');

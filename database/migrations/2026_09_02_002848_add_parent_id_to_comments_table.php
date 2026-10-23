@@ -14,10 +14,10 @@ return new class extends Migration
         Schema::table('comments', function (Blueprint $table) {
             // Adds parent_id for threaded replies, nullable for main comments
             $table->foreignId('parent_id')
-                  ->nullable()
-                  ->after('user_id')
-                  ->constrained('comments')
-                  ->onDelete('cascade');
+                ->nullable()
+                ->after('user_id')
+                ->constrained('comments')
+                ->onDelete('cascade');
         });
     }
 

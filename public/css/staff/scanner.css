@@ -1,0 +1,26 @@
+/* Counter Camera Scanner View */
+.scanner-card {
+    background-color: #ffffff;
+    border-radius: 0.75rem;
+}
+
+.camera-viewport {
+    position: relative;
+    background-color: #000000;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    min-height: 280px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #212529;
+}
+
+#reader {
+    width: 100%;
+}
+
+#reader video {
+    object-fit: cover;
+    border-radius: 0.5rem;
+}

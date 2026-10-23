@@ -16,15 +16,15 @@ return new class extends Migration
             $table->string('name');
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
-            
+
             // Made nullable because Google/Facebook users won't have a password initially
-            $table->string('password')->nullable(); 
-            
+            $table->string('password')->nullable();
+
             // Social Login Tracking Fields
             $table->string('google_id')->nullable();
             $table->string('facebook_id')->nullable();
             $table->string('avatar')->nullable(); // Optional: to save their social profile picture
-            
+
             $table->rememberToken();
             $table->timestamps();
         });

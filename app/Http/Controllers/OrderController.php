@@ -6,16 +6,17 @@ use App\Models\OrderTicket;
 use App\Models\OrderTicketItem;
 use App\Services\QrCodeService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class OrderController extends Controller
 {
     // Shop Coordinates Constants
     const MAIN_SHOP = ['lat' => 15.186235193924075, 'lng' => 120.95964131143174];
-    const SAN_JOSE  = ['lat' => 15.147108923134585, 'lng' => 120.97994960855327];
+
+    const SAN_JOSE = ['lat' => 15.147108923134585, 'lng' => 120.97994960855327];
 
     public function index()
     {
@@ -59,9 +60,7 @@ class OrderController extends Controller
             'items' => 'required|array|min:1',
             'items.*.item_type' => 'required|string',
             'items.*.quantity' => 'required|integer|min:1',
-            'items.*.reference_image' => 'required_if:items.*.item_type,custom_cake|nullable|image|max:10240',
-        ], [
-            'items.*.reference_image.required_if' => 'Please upload or select a reference image for your Custom Cake.'
+            'items.*.reference_image' => 'nullable|image|max:10240',
         ]);
 
         $lat = $request->input('lat');
@@ -69,12 +68,12 @@ class OrderController extends Controller
         $distKm = null;
 
         if ($lat && $lng) {
-            $targetBranch = $validated['pickup_branch'] === 'san_jose' 
-                ? self::SAN_JOSE 
+            $targetBranch = $validated['pickup_branch'] === 'san_jose'
+                ? self::SAN_JOSE
                 : self::MAIN_SHOP;
 
             $distKm = $this->calculateHaversineDistance(
-                $lat, $lng, 
+                $lat, $lng,
                 $targetBranch['lat'], $targetBranch['lng']
             );
         }
@@ -109,47 +108,39 @@ class OrderController extends Controller
                 if ($request->hasFile("items.{$index}.tag_custom_image")) {
                     try {
                         $path = $request->file("items.{$index}.tag_custom_image")->store('orders/tags', 'r2');
-                        $baseUrl = rtrim(config('filesystems.disks.r2.url', env('CLOUDFLARE_R2_PUBLIC_URL')), '/');
+                        $baseUrl = rtrim((string) config('filesystems.disks.r2.url'), '/');
                         $customTagUrl = "{$baseUrl}/{$path}";
                     } catch (\Exception $e) {
-                        Log::error('Tag R2 Upload Error: ' . $e->getMessage());
+                        Log::error('Tag R2 Upload Error: '.$e->getMessage());
                     }
                 }
 
                 $imageDataUri = null;
-                $referenceImgUrl = null;
 
                 if ($request->hasFile("items.{$index}.reference_image")) {
                     $file = $request->file("items.{$index}.reference_image");
 
-                    // 1. Primary: Convert image to Data URI for DB storage
+                    // Store the uploaded reference image in the database as a data URI.
                     $base64 = base64_encode(file_get_contents($file->getRealPath()));
-                    $mime = $file->getClientMimeType();
+                    $mime = $file->getMimeType();
                     $imageDataUri = "data:{$mime};base64,{$base64}";
-
-                    // 2. Backup: Cloudflare R2 Upload
-                    try {
-                        $path = $file->store('orders/references', 'r2');
-                        $baseUrl = rtrim(config('filesystems.disks.r2.url', env('CLOUDFLARE_R2_PUBLIC_URL')), '/');
-                        $referenceImgUrl = "{$baseUrl}/{$path}";
-                    } catch (\Exception $e) {
-                        Log::error('R2 Backup Upload Error: ' . $e->getMessage());
-                    }
                 }
 
                 $customOptions = $itemData;
-                unset($customOptions['item_type'], $customOptions['quantity']); 
+                unset($customOptions['item_type'], $customOptions['quantity']);
 
-                if ($referenceImgUrl) $customOptions['reference_image'] = $referenceImgUrl;
-                if ($customTagUrl) $customOptions['custom_tag_path'] = $customTagUrl;
+
+                if ($customTagUrl) {
+                    $customOptions['custom_tag_path'] = $customTagUrl;
+                }
 
                 OrderTicketItem::create([
                     'order_ticket_id' => $ticket->id,
                     'item_type' => $itemData['item_type'],
                     'quantity' => $itemData['quantity'],
                     'image_data' => $imageDataUri, // Saved directly in DB
-                    'r2_url' => $referenceImgUrl,    // Backup R2 link
-                    'reference_image_path' => $referenceImgUrl,
+                    'r2_url' => null,
+                    'reference_image_path' => null,
                     'custom_options' => $customOptions,
                 ]);
             }
@@ -158,44 +149,45 @@ class OrderController extends Controller
         });
 
         return redirect()->route('orders.ticket', ['orderTicket' => $ticket->id])
-                         ->with('just_submitted', true)
-                         ->with('success', 'Order ticket created successfully!');
+            ->with('just_submitted', true)
+            ->with('success', 'Order ticket created successfully!');
     }
 
     public function showTicket(OrderTicket $orderTicket, QrCodeService $qrService)
     {
         $orderTicket->load('items');
-        
+
         $qrData = $qrService->generateTicketQr($orderTicket->id, $orderTicket->qr_token ?? $orderTicket->id);
 
         return view('tickets.show', [
             'ticket' => $orderTicket,
             'qrData' => $qrData,
-            'isDashboardView' => request()->routeIs('dashboard.*') || request()->has('from_dashboard')
+            'isDashboardView' => request()->routeIs('dashboard.*') || request()->has('from_dashboard'),
         ]);
     }
 
     public function destroy(OrderTicket $orderTicket)
     {
-        if (!in_array(strtolower($orderTicket->status), ['pending staff review', 'pending', 'under review'])) {
+        if (! in_array(strtolower($orderTicket->status), ['pending staff review', 'pending', 'under review'])) {
             return back()->with('error', 'Only pending tickets can be cancelled.');
         }
-    
+
         session()->flash('ticket_cancelled_id', $orderTicket->id);
         $orderTicket->delete();
-    
-        return redirect()->route('tickets.index')->with('ticket_cancelled', 'Ticket #' . $orderTicket->id . ' has been cancelled.');
+
+        return redirect()->route('tickets.index')->with('ticket_cancelled', 'Ticket #'.$orderTicket->id.' has been cancelled.');
     }
-    
+
     public function restore($id)
     {
         $ticket = OrderTicket::withTrashed()->find($id);
-    
+
         if ($ticket && $ticket->trashed()) {
             $ticket->restore();
-            return redirect()->route('tickets.index')->with('success', 'Ticket #' . $id . ' has been restored successfully!');
+
+            return redirect()->route('tickets.index')->with('success', 'Ticket #'.$id.' has been restored successfully!');
         }
-    
+
         return redirect()->route('tickets.index')->with('error', 'Unable to restore ticket.');
     }
 

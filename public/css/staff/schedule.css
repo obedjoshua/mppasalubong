@@ -1,0 +1,16 @@
+/* Production Schedule & Time Slots */
+.slot-group-card {
+    border-radius: 0.75rem;
+    overflow: hidden;
+}
+
+.ticket-item-card {
+    border-radius: 0.5rem;
+    background-color: #f8f9fa;
+    transition: background-color 0.15s ease-in-out;
+}
+
+.ticket-item-card:hover {
+    background-color: #ffffff;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}

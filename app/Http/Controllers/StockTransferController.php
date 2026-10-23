@@ -1,14 +1,13 @@
 <?php
 
-namespace App\Http\Controllers\Staff;
+namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
-use App\Models\BranchStockTransfer;
 use App\Models\BranchMessage;
+use App\Models\BranchStockTransfer;
 use App\Models\Product;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 
 class StockTransferController extends Controller
 {
@@ -42,7 +41,7 @@ class StockTransferController extends Controller
         }
 
         BranchStockTransfer::create([
-            'transfer_code' => 'TR-' . now()->format('Ymd') . '-' . strtoupper(Str::random(4)),
+            'transfer_code' => 'TR-'.now()->format('Ymd').'-'.strtoupper(Str::random(4)),
             'from_branch' => $validated['from_branch'],
             'to_branch' => $validated['to_branch'],
             'product_id' => $validated['product_id'] ?? null,

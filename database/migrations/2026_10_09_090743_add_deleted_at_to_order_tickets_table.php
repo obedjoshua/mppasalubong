@@ -9,17 +9,17 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-     public function up(): void
-     {
-         Schema::table('order_tickets', function (Blueprint $table) {
-             $table->softDeletes();
-         });
-     }
-     
-     public function down(): void
-     {
-         Schema::table('order_tickets', function (Blueprint $table) {
-             $table->dropSoftDeletes();
-         });
-     }
+    public function up(): void
+    {
+        Schema::table('order_tickets', function (Blueprint $table) {
+            $table->softDeletes();
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::table('order_tickets', function (Blueprint $table) {
+            $table->dropSoftDeletes();
+        });
+    }
 };

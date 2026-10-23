@@ -13,11 +13,11 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
             $table->string('branch');
             $table->enum('log_type', [
-                'Shift Open', 
-                'Shift Close', 
-                'Spoilage Waste', 
-                'Stock Adjustment', 
-                'General Note'
+                'Shift Open',
+                'Shift Close',
+                'Spoilage Waste',
+                'Stock Adjustment',
+                'General Note',
             ]);
             $table->decimal('cash_drawer_amount', 10, 2)->nullable();
             $table->integer('completed_orders_count')->default(0);

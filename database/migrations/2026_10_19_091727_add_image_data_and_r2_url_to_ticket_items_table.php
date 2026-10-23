@@ -9,10 +9,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('order_ticket_items', function (Blueprint $table) {
-            if (!Schema::hasColumn('order_ticket_items', 'image_data')) {
+            if (! Schema::hasColumn('order_ticket_items', 'image_data')) {
                 $table->longText('image_data')->nullable();
             }
-            if (!Schema::hasColumn('order_ticket_items', 'r2_url')) {
+            if (! Schema::hasColumn('order_ticket_items', 'r2_url')) {
                 $table->string('r2_url')->nullable();
             }
         });
@@ -28,7 +28,7 @@ return new class extends Migration
             if (Schema::hasColumn('order_ticket_items', 'r2_url')) {
                 $columnsToDrop[] = 'r2_url';
             }
-            if (!empty($columnsToDrop)) {
+            if (! empty($columnsToDrop)) {
                 $table->dropColumn($columnsToDrop);
             }
         });

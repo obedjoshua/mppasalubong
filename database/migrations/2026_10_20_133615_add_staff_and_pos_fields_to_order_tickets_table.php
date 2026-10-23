@@ -28,7 +28,7 @@ return new class extends Migration
                 'completed_at',
                 'handled_by_staff_id',
                 'staff_notes',
-                'is_rescheduled'
+                'is_rescheduled',
             ]);
         });
     }

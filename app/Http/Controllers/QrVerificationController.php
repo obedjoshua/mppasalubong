@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Http\Controllers\Staff;
-use Illuminate\Support\Facades\Auth;
-use App\Http\Controllers\Controller;
+namespace App\Http\Controllers;
+
 use App\Models\OrderTicket;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class QrVerificationController extends Controller
 {
@@ -24,17 +24,17 @@ class QrVerificationController extends Controller
             ->orWhere('qr_token', $validated['ticket_id'])
             ->first();
 
-        if (!$ticket) {
+        if (! $ticket) {
             return response()->json([
                 'success' => false,
-                'message' => 'Order ticket token not found in system records.'
+                'message' => 'Order ticket token not found in system records.',
             ], 404);
         }
 
         if ($ticket->status === 'Completed') {
             return response()->json([
                 'success' => false,
-                'message' => "Ticket #{$ticket->id} was ALREADY completed on " . $ticket->completed_at?->format('M d, Y h:i A')
+                'message' => "Ticket #{$ticket->id} was ALREADY completed on ".$ticket->completed_at?->format('M d, Y h:i A'),
             ], 400);
         }
 
@@ -51,7 +51,7 @@ class QrVerificationController extends Controller
                 'deposit_required' => $ticket->deposit_required,
                 'status' => $ticket->status,
                 'items' => $ticket->items,
-            ]
+            ],
         ]);
     }
 
@@ -73,7 +73,7 @@ class QrVerificationController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => "Order #{$ticket->id} successfully fulfilled and completed!"
+            'message' => "Order #{$ticket->id} successfully fulfilled and completed!",
         ]);
     }
 }

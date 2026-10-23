@@ -1,8 +1,7 @@
 <?php
 
-namespace App\Http\Controllers\Staff;
+namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
 use App\Models\OrderTicket;
 use Illuminate\Http\Request;
 
@@ -13,7 +12,7 @@ class TicketReviewController extends Controller
         $pendingCount = OrderTicket::where('status', 'Pending Staff Review')->count();
         $approvedCount = OrderTicket::where('status', 'Approved for Payment')->count();
         $inProductionCount = OrderTicket::where('status', 'In Production')->count();
-        
+
         $todayPickups = OrderTicket::whereDate('pickup_date', today())
             ->whereIn('status', ['In Production', 'Ready for Pickup'])
             ->get();
@@ -27,8 +26,8 @@ class TicketReviewController extends Controller
         $branch = $request->get('branch');
 
         $tickets = OrderTicket::with('items')
-            ->when($status, fn($q) => $q->where('status', $status))
-            ->when($branch, fn($q) => $q->where('pickup_branch', $branch))
+            ->when($status, fn ($q) => $q->where('status', $status))
+            ->when($branch, fn ($q) => $q->where('pickup_branch', $branch))
             ->orderBy('created_at', 'desc')
             ->paginate(15);
 
@@ -38,6 +37,7 @@ class TicketReviewController extends Controller
     public function show($id)
     {
         $ticket = OrderTicket::with(['items', 'user'])->findOrFail($id);
+
         return view('staff.tickets.show', compact('ticket'));
     }
 
@@ -61,7 +61,7 @@ class TicketReviewController extends Controller
             ]);
 
             return redirect()->route('staff.tickets.index')
-                ->with('success', "Ticket #{$ticket->id} approved and quoted at ₱" . number_format($validated['quoted_price'], 2));
+                ->with('success', "Ticket #{$ticket->id} approved and quoted at ₱".number_format($validated['quoted_price'], 2));
         }
 
         $ticket->update([

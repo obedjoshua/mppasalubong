@@ -10,11 +10,11 @@ return new class extends Migration
     {
         Schema::create('wishlists', function (Blueprint $table) {
             $table->id();
-            
+
             // Links to your existing users and products tables
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->foreignId('product_id')->constrained()->cascadeOnDelete();
-            
+
             $table->timestamps();
 
             // Prevents a user from adding the exact same product to their wishlist multiple times

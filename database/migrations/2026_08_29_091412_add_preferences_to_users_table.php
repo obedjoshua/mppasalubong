@@ -39,7 +39,7 @@ return new class extends Migration
                 'marketing_emails',
                 'data_sharing',
                 'theme',
-                'timezone'
+                'timezone',
             ]);
         });
     }

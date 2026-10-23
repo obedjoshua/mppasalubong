@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::table('posts', function (Blueprint $table) {
             $table->json('images')->nullable()->after('content');
-            
+
             if (Schema::hasColumn('posts', 'image_path')) {
                 $table->dropColumn('image_path');
             }

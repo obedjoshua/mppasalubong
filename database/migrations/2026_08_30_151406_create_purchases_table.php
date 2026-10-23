@@ -11,15 +11,15 @@ return new class extends Migration
         Schema::create('purchases', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            
-            // Assuming you have a products table for the shop. 
+
+            // Assuming you have a products table for the shop.
             // If you named it something else (like 'shop_items'), change it here.
-            $table->foreignId('product_id')->nullable()->constrained()->onDelete('set null'); 
-            
+            $table->foreignId('product_id')->nullable()->constrained()->onDelete('set null');
+
             $table->integer('quantity')->default(1);
             $table->decimal('total_price', 10, 2);
             $table->string('status')->default('pending'); // pending, completed, cancelled
-            
+
             $table->timestamps();
         });
     }

@@ -2,25 +2,26 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
+use BaconQrCode\Renderer\Image\SvgImageBackEnd;
+use BaconQrCode\Renderer\ImageRenderer;
+use BaconQrCode\Renderer\RendererStyle\RendererStyle;
+use BaconQrCode\Writer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use PragmaRX\Google2FA\Google2FA;
-use BaconQrCode\Renderer\ImageRenderer;
-use BaconQrCode\Renderer\Image\SvgImageBackEnd;
-use BaconQrCode\Renderer\RendererStyle\RendererStyle;
-use BaconQrCode\Writer;
 
 class TwoFactorController extends Controller
 {
     public function enable()
     {
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $user = Auth::user();
-        $google2fa = new Google2FA();
+        $google2fa = new Google2FA;
 
         // 1. Generate a new secret key for the user
         $secret = $google2fa->generateSecretKey();
-        
+
         // Save it temporarily in the session until they verify it
         session()->put('2fa_secret', $secret);
 
@@ -34,7 +35,7 @@ class TwoFactorController extends Controller
         // 3. Render the QR Code as an SVG
         $renderer = new ImageRenderer(
             new RendererStyle(250),
-            new SvgImageBackEnd()
+            new SvgImageBackEnd
         );
         $writer = new Writer($renderer);
         $qrCodeSvg = $writer->writeString($qrCodeUrl);
@@ -46,10 +47,10 @@ class TwoFactorController extends Controller
     public function verify(Request $request)
     {
         $request->validate(['code' => 'required|numeric']);
-        
-        /** @var \App\Models\User $user */
+
+        /** @var User $user */
         $user = Auth::user();
-        $google2fa = new Google2FA();
+        $google2fa = new Google2FA;
         $secret = session('2fa_secret');
 
         // Verify the 6-digit code matches the secret
@@ -71,9 +72,9 @@ class TwoFactorController extends Controller
 
     public function disable()
     {
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $user = Auth::user();
-        
+
         $user->two_factor_auth = false;
         $user->google2fa_secret = null;
         $user->save();

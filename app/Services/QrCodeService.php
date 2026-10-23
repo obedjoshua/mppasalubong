@@ -21,9 +21,9 @@ class QrCodeService
             try {
                 $options = new $qrOptionsClass([
                     'outputType' => $qrCodeClass::OUTPUT_MARKUP_SVG,
-                    'eccLevel'   => $qrCodeClass::ECC_L,
-                    'scale'      => 5,
-                    'svgDefs'    => '<style>.qr-svg{fill:#1f2937;}</style>',
+                    'eccLevel' => $qrCodeClass::ECC_L,
+                    'scale' => 5,
+                    'svgDefs' => '<style>.qr-svg{fill:#1f2937;}</style>',
                 ]);
 
                 $svgData = (new $qrCodeClass($options))->render($scanUrl);
@@ -33,13 +33,13 @@ class QrCodeService
                     'content' => $svgData,
                 ];
             } catch (Exception $e) {
-                logger()->warning('Local QR Generation Failed: ' . $e->getMessage());
+                logger()->warning('Local QR Generation Failed: '.$e->getMessage());
             }
         }
 
         // PLAN B: Public Cloud API Fallback
-        $primaryApiUrl = "https://quickchart.io/qr?text=" . urlencode($scanUrl) . "&size=200&margin=1";
-        $secondaryApiUrl = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" . urlencode($scanUrl);
+        $primaryApiUrl = 'https://quickchart.io/qr?text='.urlencode($scanUrl).'&size=200&margin=1';
+        $secondaryApiUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='.urlencode($scanUrl);
 
         return [
             'mode' => 'external_image',

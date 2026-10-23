@@ -268,7 +268,7 @@
             @foreach($ticket->items as $idx =>$item)
                 <button type="button" 
                         class="tab-btn {{ $idx === 0 ? 'active-tab' : '' }}" 
-                        onclick="switchTab({{ $idx }})" 
+                        onclick="switchTab('{{ $idx }}')" 
                         id="tabBtn_{{ $idx }}">
                     Item {{ $idx + 1 }}: {{ ucfirst(str_replace('_', ' ',$item->item_type)) }}
                 </button>
@@ -290,23 +290,27 @@
                         $itemImage = asset('storage/' .$cleanPath);
                     }
                 }
+
+                $itemImages = collect([
+                    $itemImage,
+                    $item->custom_options['reference_images'] ?? null,
+                ])->flatten()->filter(fn ($image) => is_string($image) && $image !== '')
+                  ->unique()->values();
             @endphp
         
             <div class="tab-content-panel {{ $idx === 0 ? 'active-panel' : '' }}" id="tabPanel_{{ $idx }}">
                 
                 <div class="overlay-left-image">
-                    @if($itemImage)
-                        <img src="{{ $itemImage }}" 
-                             alt="{{ $item->item_type }} Reference" 
-                             onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" />
-                        <div style="display: none; color: #94a3b8; font-size: 0.85rem; text-align: center; padding: 20px;">
-                            🎂 Unable to load reference image
-                        </div>
-                    @else
+                    @forelse($itemImages as $image)
+                        <img src="{{ $image }}"
+                             alt="{{ $item->item_type }} Reference"
+                             style="max-width: 100%; max-height: 100%; object-fit: contain; margin-bottom: 8px;"
+                             onerror="this.style.display='none';" />
+                    @empty
                         <div style="color: #94a3b8; font-size: 0.85rem; text-align: center; padding: 20px;">
                             🎂 No Reference Image Attached
                         </div>
-                    @endif
+                    @endforelse
                 </div>
         
                 <div class="overlay-right-details">

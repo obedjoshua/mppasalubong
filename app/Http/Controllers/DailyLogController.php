@@ -1,8 +1,7 @@
 <?php
 
-namespace App\Http\Controllers\Staff;
+namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
 use App\Models\DailyStaffLog;
 use App\Models\OrderTicket;
 use Illuminate\Http\Request;
