@@ -11,7 +11,6 @@
 @push('scripts')
     <script src="https://unpkg.com/maplibre-gl@^4.7.1/dist/maplibre-gl.js"></script>
     <meta name="vision-route" content="{{ url('/api/vision/extract-colors') }}">
-    {{-- Any other page-specific JS can go here --}}
 @endpush
 
 @section('content')
@@ -92,46 +91,53 @@
                             </div>
 
                             <!-- Map Container -->
-                            <div id="map" style="width: 100%; height: 400px; border-radius: 12px; margin-top: 15px; border: 2px solid #eee;"></div>
+                            <div class="map-picker-container">
+                                <div id="openFreeMap" class="free-map-view"></div>
+                                <div class="map-instruction-tag">💡 Drag the blue marker or click on the map to place your location pin.</div>
+                            </div>
                             
                             <!-- Lat/Lng Hidden Fields -->
-                            <input type="hidden" name="customer_lat" id="customerLat">
-                            <input type="hidden" name="customer_lng" id="customerLng">
+                            <input type="hidden" name="customer_lat" id="latInput">
+                            <input type="hidden" name="customer_lng" id="lngInput">
 
                             <h3 class="card-heading" style="margin-top: 30px;">2. Select Pickup Shop</h3>
-                            <input type="hidden" name="pickup_branch" id="selectedBranchInput">
+                            <input type="hidden" name="pickup_branch" id="pickupBranchInput" value="main_shop">
 
-                            <div class="branch-selector-grid">
-                                <!-- BRANCH A -->
-                                <div class="branch-card" data-branch="Branch A (San Jose)" data-lat="15.79" data-lng="120.99">
-                                    <div class="branch-icon">🏢</div>
-                                    <div class="branch-info">
-                                        <div class="branch-name-row">
-                                            <span class="b-name">Branch A</span>
-                                            <span class="b-dist">-- km</span>
+                            <div class="shop-selection-grid">
+                                <!-- MAIN BRANCH -->
+                                <div class="shop-card active" id="shopCard_main" onclick="selectShop('main_shop')">
+                                    <div class="shop-card-header">
+                                        <div class="shop-icon">🏬</div>
+                                        <div class="shop-info">
+                                            <div class="shop-title-row">
+                                                <span class="shop-name">Main Branch</span>
+                                                <span class="shop-rec-badge" id="recBadge_main">Nearest</span>
+                                            </div>
+                                            <span class="shop-address">Poblacion, San Miguel, Bulacan</span>
                                         </div>
-                                        <span class="b-loc">San Jose City</span>
                                     </div>
-                                    <div class="branch-check"></div>
+                                    <div class="shop-distance-tag" id="distTag_main">📍 Calculating distance...</div>
                                 </div>
 
-                                <!-- BRANCH B -->
-                                <div class="branch-card" data-branch="Branch B (Lupao)" data-lat="15.85" data-lng="120.91">
-                                    <div class="branch-icon">🏢</div>
-                                    <div class="branch-info">
-                                        <div class="branch-name-row">
-                                            <span class="b-name">Branch B</span>
-                                            <span class="b-dist">-- km</span>
+                                <!-- SAN JOSE BRANCH -->
+                                <div class="shop-card" id="shopCard_sanjose" onclick="selectShop('san_jose')">
+                                    <div class="shop-card-header">
+                                        <div class="shop-icon">🏪</div>
+                                        <div class="shop-info">
+                                            <div class="shop-title-row">
+                                                <span class="shop-name">San Jose Branch</span>
+                                                <span class="shop-rec-badge hidden-element" id="recBadge_sanjose">Nearest</span>
+                                            </div>
+                                            <span class="shop-address">Norberto St., San Jose, San Miguel</span>
                                         </div>
-                                        <span class="b-loc">Lupao</span>
                                     </div>
-                                    <div class="branch-check"></div>
+                                    <div class="shop-distance-tag" id="distTag_sanjose">📍 Calculating distance...</div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="wizard-footer">
-                            <button type="button" class="btn-wizard-next" id="toStep2">
+                        <div class="wizard-nav-actions" style="justify-content: flex-end;">
+                            <button type="button" class="btn-duo-3d" onclick="goToStep(2)">
                                 Next: Choose Item Category ➔
                             </button>
                         </div>
@@ -140,119 +146,119 @@
                     <!-- STEP 2: CATEGORY SELECTION -->
                     <div class="wizard-step-panel" id="wizardStep2">
                         <div class="duo-3d-card">
-                            <h3 class="card-heading">3. What are we baking?</h3>
-                            <p class="step-desc">Pick a category to see available options and specifications.</p>
+                            <h3 class="card-heading">3. What are we baking for you today?</h3>
+                            <p style="color: #64748b; font-weight: 700; margin-bottom: 20px;">Choose a category to start building your order.</p>
 
-                            <div class="category-grid">
-                                <div class="cat-card" data-category="Cake">
-                                    <div class="cat-icon">🎂</div>
-                                    <div class="cat-info">
-                                        <div class="cat-name-row">
-                                            <span class="c-name">Custom Cake</span>
-                                            <span class="c-tag">Popular</span>
-                                        </div>
-                                        <span class="c-desc">Birthday, Wedding, or any occasion.</span>
-                                    </div>
-                                    <div class="cat-check"></div>
+                            <div class="category-selection-grid">
+                                <div class="category-select-card" onclick="selectInitialCategory('custom_cake')">
+                                    <div class="category-icon">🎂</div>
+                                    <div class="category-title">Custom Cake</div>
+                                    <div class="category-desc">Celebration cakes with AI image color & spec extraction.</div>
                                 </div>
 
-                                <div class="cat-card" data-category="Cupcakes">
-                                    <div class="cat-icon">🧁</div>
-                                    <div class="cat-info">
-                                        <div class="cat-name-row">
-                                            <span class="c-name">Cupcakes</span>
-                                            <span class="c-tag">Sweet</span>
-                                        </div>
-                                        <span class="c-desc">Box of 6, 12, or custom sets.</span>
-                                    </div>
-                                    <div class="cat-check"></div>
+                                <div class="category-select-card" onclick="selectInitialCategory('cupcakes')">
+                                    <div class="category-icon">🧁</div>
+                                    <div class="category-title">Cupcakes</div>
+                                    <div class="category-desc">Boxed sets or single giveaway cupcakes with custom swirl icing.</div>
                                 </div>
-                                <!-- Add more categories as needed -->
+
+                                <div class="category-select-card" onclick="selectInitialCategory('giveaway_loaf')">
+                                    <div class="category-icon">🍞</div>
+                                    <div class="category-title">Cheesy Taisan Loaf</div>
+                                    <div class="category-desc">Soft baked loaves with optional box and ribbon packaging.</div>
+                                </div>
+
+                                <div class="category-select-card" onclick="selectInitialCategory('giveaway_round')">
+                                    <div class="category-icon">🍰</div>
+                                    <div class="category-title">Round Giveaways</div>
+                                    <div class="category-desc">Yema cheese and chocolate cakes for event favors.</div>
+                                </div>
                             </div>
                         </div>
 
-                        <div class="wizard-footer">
-                            <button type="button" class="btn-wizard-back" id="backToStep1">Back</button>
-                            <button type="button" class="btn-wizard-next" id="toStep3">Next: Specifications ➔</button>
+                        <div class="wizard-nav-actions">
+                            <button type="button" class="btn-duo-outline" style="width: auto;" onclick="goToStep(1)">➔ Back to Location</button>
                         </div>
                     </div>
 
                     <!-- STEP 3: SPECIFICATIONS -->
                     <div class="wizard-step-panel" id="wizardStep3">
-                        <h3 class="card-heading">4. Specifications</h3>
-                        <div class="specs-divider"></div>
-
-                        <div class="specs-scroll-area">
-                            <div class="upload-section">
-                                <strong>Reference Images (Max 3)</strong>
-                                <ul class="upload-list" id="imageList">
-                                    <!-- Dynamic Image Items -->
-                                </ul>
-
-                                <div class="upload-controls">
-                                    <div class="file-input-wrapper">
-                                        <label class="btn-upload">
-                                            <span>📷 Upload Image</span>
-                                            <input type="file" id="imageInput" accept="image/*" class="hidden-element">
-                                        </label>
-                                        <div id="imageLoader" class="inline-loader hidden-element"></div>
-                                    </div>
-                                    <div class="color-palette" id="colorPalette">
-                                        <!-- Extracted Colors -->
-                                    </div>
-                                    <div id="imageCountNote" class="upload-note">No images uploaded yet.</div>
-                                </div>
-                            </div>
-
-                            <div class="details-section">
-                                <label class="input-label">Describe your order</label>
-                                <div class="textarea-wrapper">
-                                    <div class="textarea-header">
-                                        <span class="hint">Themes, colors, flavor, etc.</span>
-                                        <div class="char-count">0 / 500</div>
-                                    </div>
-                                    <div class="textarea-container">
-                                        <div class="mention-suggestions hidden-element">
-                                            <div class="suggestion-item">#Chocolate</div>
-                                            <div class="suggestion-item">#Vanilla</div>
-                                            <div class="suggestion-item">#Birthday</div>
-                                        </div>
-                                        <textarea name="specifications" id="specsInput" class="custom-textarea" placeholder="Example: 2-tier chocolate cake with floral design..."></textarea>
-                                    </div>
-                                    <button type="button" class="btn-ai-assist" id="aiAssistBtn">✨ AI Suggestions</button>
-                                </div>
-                            </div>
+                        <div class="add-buttons-grid" style="margin-bottom: 20px;">
+                            <button type="button" class="btn-add-large" id="btnAddCake"><span>🎂</span> Add Custom Cake</button>
+                            <button type="button" class="btn-add-large" id="btnAddCupcakes"><span>🧁</span> Add Cupcakes</button>
+                            <button type="button" class="btn-add-large" id="btnAddLoaf"><span>🍞</span> Add Taisan Loaf</button>
+                            <button type="button" class="btn-add-large" id="btnAddRound"><span>🍰</span> Add Round Giveaway</button>
                         </div>
 
-                        <div class="wizard-footer">
-                            <button type="button" class="btn-wizard-back" id="backToStep2">Back</button>
-                            <button type="button" class="btn-wizard-next" id="toStep4">Next: Schedule & Submit ➔</button>
+                        <!-- Dynamic Items Container -->
+                        <div id="itemsContainer"></div>
+
+                        <div class="wizard-nav-actions">
+                            <button type="button" class="btn-duo-outline" style="width: auto;" onclick="goToStep(2)">➔ Back to Category</button>
+                            <button type="button" class="btn-duo-3d" onclick="goToStep(4)">Next: Schedule & Submit ➔</button>
                         </div>
                     </div>
 
                     <!-- STEP 4: SCHEDULE & SUBMIT -->
                     <div class="wizard-step-panel" id="wizardStep4">
                         <div class="duo-3d-card">
-                            <h3 class="card-heading">5. Finalize & Schedule</h3>
-                            <div class="summary-preview"></div>
+                            <h3 class="card-heading">5. Pickup Date & Time</h3>
                             
-                            <div class="schedule-inputs">
+                            <div class="card-grid-2">
+                                <!-- PICKUP DATE SELECTOR -->
                                 <div class="input-group">
-                                    <strong>Pickup Date</strong>
-                                    <ul class="date-options">
-                                        <!-- Dynamic Dates -->
-                                    </ul>
+                                    <label class="input-label">Select Pickup Date</label>
+                                    <div class="duo-dropdown-wrapper" id="wrap_pickup_date">
+                                        <div class="duo-picker-trigger" id="trigger_pickup_date">
+                                            <span id="dateTriggerText">Choose Pickup Date</span>
+                                            <div class="dropdown-caret"></div>
+                                        </div>
+                                        <div class="duo-dropdown-popover popover-padding">
+                                            <div class="cal-header">
+                                                <button type="button" class="btn-duo-outline btn-cal-nav" id="btnPrevMonth">◀</button>
+                                                <span id="calMonthYearTitle">Month Year</span>
+                                                <button type="button" class="btn-duo-outline btn-cal-nav" id="btnNextMonth">▶</button>
+                                            </div>
+                                            <div class="cal-grid">
+                                                <div class="cal-day-label">Su</div>
+                                                <div class="cal-day-label">Mo</div>
+                                                <div class="cal-day-label">Tu</div>
+                                                <div class="cal-day-label">We</div>
+                                                <div class="cal-day-label">Th</div>
+                                                <div class="cal-day-label">Fr</div>
+                                                <div class="cal-day-label">Sa</div>
+                                            </div>
+                                            <div class="cal-grid cal-dates-grid-margin" id="calDatesGrid"></div>
+                                        </div>
+                                        <input type="hidden" name="pickup_date" id="hiddenDate" required>
+                                    </div>
                                 </div>
+
+                                <!-- PICKUP TIME ANALOG PICKER -->
                                 <div class="input-group">
-                                    <label class="input-label">Additional Notes (Optional)</label>
-                                    <textarea name="additional_notes" class="clean-textarea" placeholder="Anything else we should know?"></textarea>
+                                    <label class="input-label">Select Pickup Time</label>
+                                    <div class="duo-dropdown-wrapper" id="wrap_pickup_time">
+                                        <div class="duo-picker-trigger" id="trigger_pickup_time">
+                                            <span id="timeTriggerText">08:00 AM</span>
+                                            <div class="dropdown-caret"></div>
+                                        </div>
+                                        <div class="duo-dropdown-popover"></div>
+                                        <input type="hidden" name="pickup_time" id="hiddenTime" value="08:00 AM" required>
+                                    </div>
                                 </div>
+                            </div>
+
+                            <div class="input-group input-group-top-margin">
+                                <label class="input-label">Order Notes or Special Instructions (Optional)</label>
+                                <textarea name="additional_notes" class="clean-input" rows="3" placeholder="Specify landmark details or pickup notes..."></textarea>
                             </div>
                         </div>
 
-                        <div class="wizard-footer">
-                            <button type="button" class="btn-wizard-back" id="backToStep3">Back</button>
-                            <button type="submit" class="btn-wizard-submit">Submit Order Ticket</button>
+                        <div class="wizard-nav-actions">
+                            <button type="button" class="btn-duo-outline" style="width: auto;" onclick="goToStep(3)">➔ Back to Specs</button>
+                            <button type="submit" class="btn-duo-3d btn-submit-ticket" id="btnSubmitTicket">
+                                🚀 Submit Order Ticket
+                            </button>
                         </div>
                     </div>
                 </form>

@@ -1,3 +1,8 @@
+/**
+ * Masaganang Pagpapala - Custom Order Ticket Engine
+ * Ultra-Fast, Offline-First with Canvas Compression & IndexedDB Queueing
+ */
+
 let currentStep = 1;
 let itemIndex = 0;
 let messageCounts = {};
@@ -5,16 +10,15 @@ let messageCounts = {};
 const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 const visionRoute = document.querySelector('meta[name="vision-route"]')?.getAttribute('content') || '/api/vision/extract-colors';
 
-// Admin closed/off dates configuration (YYYY-MM-DD format)
 window.closedDates = window.closedDates || [];
 
-// OpenFreeMap & MapLibre GL JS instances
+// OpenFreeMap / MapLibre GL Instances
 let map;
 let userMarker;
 let mainShopMarker;
 let sanJoseShopMarker;
 
-// Store Branch Coordinates
+// Store Coordinates
 const MAIN_SHOP_COORDS = { lat: 15.186235193924075, lng: 120.95964131143174 };
 const SAN_JOSE_COORDS = { lat: 15.147108923134585, lng: 120.97994960855327 };
 
@@ -24,49 +28,50 @@ let currCalDate = new Date();
 let selHour = "08";
 let selMin = "00";
 let selAmpm = "AM";
-let currentClockMode = 'hour'; // 'hour' or 'minute'
+let currentClockMode = 'hour';
+
+// IndexedDB Offline Queueing
+let dbInstance = null;
 
 document.addEventListener("DOMContentLoaded", () => {
+    initIndexedDB();
     initZoomModal();
     initOpenFreeMap();
+    setupNetworkSyncListeners();
 
     const ticketForm = document.getElementById('ticketForm');
     if (ticketForm) {
-        ticketForm.addEventListener('submit', (e) => {
+        ticketForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
             document.querySelectorAll('.input-error-highlight').forEach(el => el.classList.remove('input-error-highlight'));
             document.querySelectorAll('.inline-field-error').forEach(el => el.remove());
 
             let firstErrorElement = null;
 
-            // Validate Customer Location (Step 1)
+            // Validate Customer Location
             const locationInput = document.getElementById('customerLocationInput');
             if (!locationInput || !locationInput.value.trim()) {
-                e.preventDefault();
                 goToStep(1);
-                if (locationInput) {
-                    locationInput.classList.add('input-error-highlight');
-                    const err = document.createElement('span');
-                    err.className = 'inline-field-error';
-                    err.innerText = '⚠️ Please enter or select your location on the map.';
-                    locationInput.parentElement.appendChild(err);
-                    firstErrorElement = locationInput;
-                }
+                locationInput.classList.add('input-error-highlight');
+                const err = document.createElement('span');
+                err.className = 'inline-field-error';
+                err.innerText = '⚠️ Please enter or select your location on the map.';
+                locationInput.parentElement.appendChild(err);
+                firstErrorElement = locationInput;
             }
 
-            // Validate Items Container (Step 3)
+            // Validate Items Container
             const itemsContainer = document.getElementById('itemsContainer');
             if (!firstErrorElement && itemsContainer && itemsContainer.children.length === 0) {
-                e.preventDefault();
                 goToStep(2);
                 alert("Please select at least one item before submitting.");
                 return;
             }
 
-            // Validate Pickup Date (Step 4)
+            // Validate Pickup Date
             const pickupDateInput = document.getElementById('hiddenDate');
             const wrapPickupDate = document.getElementById('wrap_pickup_date');
             if (!pickupDateInput || !pickupDateInput.value.trim()) {
-                e.preventDefault();
                 if (wrapPickupDate) {
                     wrapPickupDate.classList.add('input-error-highlight');
                     const err = document.createElement('span');
@@ -79,6 +84,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (firstErrorElement) {
                 firstErrorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                return;
+            }
+
+            // Submit via Network or Queue to Offline Storage
+            if (!navigator.onLine) {
+                await queueOrderOffline(new FormData(ticketForm));
+            } else {
+                submitFormDirectly(ticketForm);
             }
         });
     }
@@ -90,7 +103,7 @@ document.addEventListener("DOMContentLoaded", () => {
             clearTimeout(debounceTimer);
             const query = e.target.value.trim();
             if (query.length > 2) {
-                debounceTimer = setTimeout(() => searchAddressNominatim(query), 400);
+                debounceTimer = setTimeout(() => searchAddressNominatim(query), 350);
             } else {
                 hideSearchPopover();
             }
@@ -98,9 +111,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     const btnGeo = document.getElementById('btnUseCurrentLocation');
-    if (btnGeo) {
-        btnGeo.onclick = useCurrentLocation;
-    }
+    if (btnGeo) btnGeo.onclick = useCurrentLocation;
 
     const triggerDate = document.getElementById('trigger_pickup_date');
     const triggerTime = document.getElementById('trigger_pickup_time');
@@ -142,7 +153,137 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // =========================================================================
-// OPENFREEMAP (MAPLIBRE GL JS) INTEGRATION
+// INDEXEDDB & OFFLINE QUEUE MANAGEMENT
+// =========================================================================
+function initIndexedDB() {
+    const request = indexedDB.open("MasaganaOrderDB", 1);
+    request.onupgradeneeded = (e) => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains("pending_orders")) {
+            db.createObjectStore("pending_orders", { keyPath: "id", autoIncrement: true });
+        }
+    };
+    request.onsuccess = (e) => { dbInstance = e.target.result; };
+    request.onerror = (e) => console.error("IndexedDB error:", e);
+}
+
+function setupNetworkSyncListeners() {
+    const badge = document.getElementById('offlineIndicator');
+    const updateStatus = () => {
+        if (!navigator.onLine) {
+            if (badge) badge.classList.remove('hidden-element');
+        } else {
+            if (badge) badge.classList.add('hidden-element');
+            flushOfflineOrders();
+        }
+    };
+    window.addEventListener('online', updateStatus);
+    window.addEventListener('offline', updateStatus);
+    updateStatus();
+}
+
+async function queueOrderOffline(formData) {
+    if (!dbInstance) return;
+    const serializableData = {};
+    for (let [key, val] of formData.entries()) {
+        if (!(val instanceof File)) serializableData[key] = val;
+    }
+
+    const tx = dbInstance.transaction("pending_orders", "readwrite");
+    const store = tx.objectStore("pending_orders");
+    store.add({ timestamp: Date.now(), data: serializableData });
+
+    alert("⚡ Network connection lost. Your order ticket has been securely saved offline and will automatically upload once online!");
+    window.location.href = "/orders";
+}
+
+async function flushOfflineOrders() {
+    if (!dbInstance) return;
+    const tx = dbInstance.transaction("pending_orders", "readwrite");
+    const store = tx.objectStore("pending_orders");
+    const req = store.getAll();
+
+    req.onsuccess = async () => {
+        const orders = req.result;
+        if (orders.length === 0) return;
+
+        for (const item of orders) {
+            try {
+                const response = await fetch('/orders', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(item.data)
+                });
+                if (response.ok) {
+                    const deleteTx = dbInstance.transaction("pending_orders", "readwrite");
+                    deleteTx.objectStore("pending_orders").delete(item.id);
+                }
+            } catch (err) {
+                console.error("Flush order failed:", err);
+            }
+        }
+    };
+}
+
+async function submitFormDirectly(form) {
+    const btn = document.getElementById('btnSubmitTicket');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '⏳ Submitting Ticket...';
+    }
+    form.submit();
+}
+
+// =========================================================================
+// CLIENT-SIDE IMAGE COMPRESSION (CANVAS DISPATCH)
+// =========================================================================
+function compressImageFile(file, maxWidth = 1200, quality = 0.8) {
+    return new Promise((resolve) => {
+        if (!file.type.startsWith('image/')) return resolve(file);
+
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (e) => {
+            const img = new Image();
+            img.src = e.target.result;
+            img.onload = () => {
+                let w = img.width;
+                let h = img.height;
+                if (w > maxWidth) {
+                    h = Math.round((h * maxWidth) / w);
+                    w = maxWidth;
+                }
+
+                const canvas = document.createElement('canvas');
+                canvas.width = w;
+                canvas.height = h;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, w, h);
+
+                canvas.toBlob((blob) => {
+                    if (blob) {
+                        const compressedFile = new File([blob], file.name, {
+                            type: 'image/jpeg',
+                            lastModified: Date.now()
+                        });
+                        resolve(compressedFile);
+                    } else {
+                        resolve(file);
+                    }
+                }, 'image/jpeg', quality);
+            };
+            img.onerror = () => resolve(file);
+        };
+        reader.onerror = () => resolve(file);
+    });
+}
+
+// =========================================================================
+// MAPLIBRE GL JS / OPENFREEMAP INTEGRATION
 // =========================================================================
 function initOpenFreeMap() {
     const mapContainer = document.getElementById('openFreeMap');
@@ -177,10 +318,10 @@ function initOpenFreeMap() {
     const elMain = document.createElement('div');
     elMain.className = 'map-marker-shop';
     elMain.innerHTML = '🏬';
-    elMain.title = 'Main Shop';
+    elMain.title = 'Main Branch';
     mainShopMarker = new maplibregl.Marker({ element: elMain })
         .setLngLat([MAIN_SHOP_COORDS.lng, MAIN_SHOP_COORDS.lat])
-        .setPopup(new maplibregl.Popup().setHTML('<strong>Main Shop</strong><br>San Miguel, Bulacan'))
+        .setPopup(new maplibregl.Popup().setHTML('<strong>Main Branch</strong><br>San Miguel, Bulacan'))
         .addTo(map);
 
     const elSanJose = document.createElement('div');
@@ -189,7 +330,7 @@ function initOpenFreeMap() {
     elSanJose.title = 'San Jose Branch';
     sanJoseShopMarker = new maplibregl.Marker({ element: elSanJose })
         .setLngLat([SAN_JOSE_COORDS.lng, SAN_JOSE_COORDS.lat])
-        .setPopup(new maplibregl.Popup().setHTML('<strong>San Jose Branch</strong><br>Norberto St., San Miguel'))
+        .setPopup(new maplibregl.Popup().setHTML('<strong>San Jose Branch</strong><br>Norberto St., San Jose'))
         .addTo(map);
 
     map.on('click', (e) => {
@@ -218,8 +359,7 @@ function calculateDistanceKm(lat1, lon1, lat2, lon2) {
     const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
               Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
               Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
+    return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 }
 
 function calculateNearestBranch(userLat, userLng) {
@@ -326,9 +466,7 @@ async function reverseGeocodeOpenStreetMap(lat, lng) {
 }
 
 function useCurrentLocation() {
-    const locInput = document.getElementById('customerLocationInput');
     const btnGeo = document.getElementById('btnUseCurrentLocation');
-
     if (!navigator.geolocation) {
         alert("Geolocation is not supported by your browser.");
         return;
@@ -358,12 +496,12 @@ function useCurrentLocation() {
                 btnGeo.textContent = "📍 Use Current Location";
             }
         },
-        (error) => {
+        () => {
             if (btnGeo) {
                 btnGeo.disabled = false;
                 btnGeo.textContent = "📍 Use Current Location";
             }
-            alert("Unable to retrieve location. Please search manually in the field above.");
+            alert("Unable to retrieve location. Please search manually above.");
         },
         { enableHighAccuracy: true, timeout: 10000 }
     );
@@ -395,9 +533,7 @@ function goToStep(stepNum) {
 
     currentStep = stepNum;
 
-    document.querySelectorAll('.wizard-step-panel').forEach(panel => {
-        panel.classList.remove('active-step');
-    });
+    document.querySelectorAll('.wizard-step-panel').forEach(panel => panel.classList.remove('active-step'));
     const targetPanel = document.getElementById('wizardStep' + stepNum);
     if (targetPanel) targetPanel.classList.add('active-step');
 
@@ -405,11 +541,8 @@ function goToStep(stepNum) {
         const stepIndicator = document.getElementById('indicatorStep' + i);
         if (stepIndicator) {
             stepIndicator.classList.remove('active', 'completed');
-            if (i === stepNum) {
-                stepIndicator.classList.add('active');
-            } else if (i < stepNum) {
-                stepIndicator.classList.add('completed');
-            }
+            if (i === stepNum) stepIndicator.classList.add('active');
+            else if (i < stepNum) stepIndicator.classList.add('completed');
         }
     }
 
@@ -422,9 +555,7 @@ function initZoomModal() {
     const modal = document.createElement('div');
     modal.id = 'imageZoomModal';
     modal.className = 'image-zoom-modal';
-    modal.onclick = (e) => {
-        if (e.target === modal) closeZoomModal();
-    };
+    modal.onclick = (e) => { if (e.target === modal) closeZoomModal(); };
 
     const container = document.createElement('div');
     container.className = 'modal-img-container';
@@ -432,23 +563,19 @@ function initZoomModal() {
     const closeBtn = document.createElement('button');
     closeBtn.type = 'button';
     closeBtn.className = 'btn-modal-close';
-    closeBtn.title = 'Close Preview';
     closeBtn.onclick = closeZoomModal;
     closeBtn.innerHTML = `<svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>`;
 
     const img = document.createElement('img');
     img.id = 'zoomModalImg';
     img.className = 'modal-img-preview';
-    img.alt = 'Reference Image Zoomed Preview';
 
     container.appendChild(closeBtn);
     container.appendChild(img);
     modal.appendChild(container);
     document.body.appendChild(modal);
 
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') closeZoomModal();
-    });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeZoomModal(); });
 }
 
 function openZoomModal(imgSrc) {
@@ -462,9 +589,7 @@ function openZoomModal(imgSrc) {
 
 function closeZoomModal() {
     const modal = document.getElementById('imageZoomModal');
-    if (modal) {
-        modal.classList.remove('open');
-    }
+    if (modal) modal.classList.remove('open');
 }
 
 function toggleDropdown(wrapperId) {
@@ -542,9 +667,7 @@ function selectCustomOption(wrapperId, hiddenName, value, label, targetElement) 
     const wrapper = document.getElementById(wrapperId);
     if (wrapper) {
         wrapper.querySelectorAll('.duo-option-item').forEach(el => el.classList.remove('selected'));
-        if (targetElement) {
-            targetElement.classList.add('selected');
-        }
+        if (targetElement) targetElement.classList.add('selected');
     }
     closeAllDropdowns();
 }
@@ -556,9 +679,7 @@ function renderCalendar() {
     
     const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
     const titleElem = document.getElementById('calMonthYearTitle');
-    if (titleElem) {
-        titleElem.textContent = monthNames[currCalDate.getMonth()] + ' ' + currCalDate.getFullYear();
-    }
+    if (titleElem) titleElem.textContent = monthNames[currCalDate.getMonth()] + ' ' + currCalDate.getFullYear();
 
     const minLeadDate = new Date();
     minLeadDate.setDate(minLeadDate.getDate() + 2);
@@ -589,7 +710,7 @@ function renderCalendar() {
             btn.style.opacity = '0.3';
             btn.style.cursor = 'not-allowed';
             if (isClosedByAdmin) {
-                btn.title = "Date disabled by admin (Fully booked or closed)";
+                btn.title = "Date disabled by admin (Fully booked)";
                 btn.style.background = "#fee2e2";
                 btn.style.color = "#991b1b";
             }
@@ -620,9 +741,6 @@ function changeMonth(delta) {
     renderCalendar();
 }
 
-// =========================================================================
-// ANALOG CLOCK PICKER & DYNAMIC TIME RULES
-// =========================================================================
 function renderTimeSelectors() {
     const popover = document.querySelector("#wrap_pickup_time .duo-dropdown-popover");
     if (!popover) return;
@@ -630,45 +748,33 @@ function renderTimeSelectors() {
     popover.textContent = "";
     popover.className = "duo-dropdown-popover clock-picker-popover";
 
-    // Determine if selected pickup date is Sunday
     let isSunday = false;
     if (selectedDateVal) {
         const parts = selectedDateVal.split("-");
         const selDateObj = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
-        if (selDateObj.getDay() === 0) {
-            isSunday = true;
-        }
+        if (selDateObj.getDay() === 0) isSunday = true;
     }
 
-    // Rules:
-    // Sunday: 07, 08, 09, 11 (Strictly AM)
-    // Mon-Sat: 07, 08, 09, 10, 11 (AM) & 12, 01, 02, 03, 04, 05 (PM)
     let allowedHours = isSunday 
         ? ["07", "08", "09", "11"] 
         : ["07", "08", "09", "10", "11", "12", "01", "02", "03", "04", "05"];
 
     if (isSunday) {
         selAmpm = "AM";
-        if (!allowedHours.includes(selHour)) {
-            selHour = "07";
-        }
+        if (!allowedHours.includes(selHour)) selHour = "07";
     } else {
         if (["01", "02", "03", "04", "05"].includes(selHour)) selAmpm = "PM";
         else if (["07", "08", "09", "10", "11"].includes(selHour)) selAmpm = "AM";
         else if (selHour === "12") selAmpm = "PM";
     }
 
-    // Minute restrictions
     let allowedMins = ["00", "30"];
     if (isSunday && selHour === "11") allowedMins = ["00"];
     if (!isSunday && selHour === "07" && selAmpm === "AM") allowedMins = ["30"];
     if (!isSunday && selHour === "05" && selAmpm === "PM") allowedMins = ["00"];
 
-    if (!allowedMins.includes(selMin)) {
-        selMin = allowedMins[0];
-    }
+    if (!allowedMins.includes(selMin)) selMin = allowedMins[0];
 
-    // 1. Digital Display Header
     const header = document.createElement("div");
     header.className = "clock-header";
 
@@ -679,11 +785,7 @@ function renderTimeSelectors() {
     hourBox.type = "button";
     hourBox.className = `clock-digit-box ${currentClockMode === "hour" ? "active" : ""}`;
     hourBox.textContent = selHour;
-    hourBox.onclick = (e) => {
-        e.stopPropagation();
-        currentClockMode = "hour";
-        renderTimeSelectors();
-    };
+    hourBox.onclick = (e) => { e.stopPropagation(); currentClockMode = "hour"; renderTimeSelectors(); };
 
     const colon = document.createElement("span");
     colon.className = "clock-colon";
@@ -693,11 +795,7 @@ function renderTimeSelectors() {
     minBox.type = "button";
     minBox.className = `clock-digit-box ${currentClockMode === "minute" ? "active" : ""}`;
     minBox.textContent = selMin;
-    minBox.onclick = (e) => {
-        e.stopPropagation();
-        currentClockMode = "minute";
-        renderTimeSelectors();
-    };
+    minBox.onclick = (e) => { e.stopPropagation(); currentClockMode = "minute"; renderTimeSelectors(); };
 
     displayBox.appendChild(hourBox);
     displayBox.appendChild(colon);
@@ -739,7 +837,6 @@ function renderTimeSelectors() {
     header.appendChild(ampmToggle);
     popover.appendChild(header);
 
-    // 2. Analog Dial Container
     const dialContainer = document.createElement("div");
     dialContainer.className = "clock-dial-container";
 
@@ -834,7 +931,6 @@ function renderTimeSelectors() {
     dialContainer.appendChild(dialCircle);
     popover.appendChild(dialContainer);
 
-    // 3. Action Footer Buttons
     const footer = document.createElement("div");
     footer.className = "clock-footer";
 
@@ -842,20 +938,13 @@ function renderTimeSelectors() {
     btnCancel.type = "button";
     btnCancel.className = "clock-action-btn cancel";
     btnCancel.textContent = "Cancel";
-    btnCancel.onclick = (e) => {
-        e.stopPropagation();
-        closeAllDropdowns();
-    };
+    btnCancel.onclick = (e) => { e.stopPropagation(); closeAllDropdowns(); };
 
     const btnOk = document.createElement("button");
     btnOk.type = "button";
     btnOk.className = "clock-action-btn ok";
     btnOk.textContent = "OK";
-    btnOk.onclick = (e) => {
-        e.stopPropagation();
-        updateTimeDisplay();
-        closeAllDropdowns();
-    };
+    btnOk.onclick = (e) => { e.stopPropagation(); updateTimeDisplay(); closeAllDropdowns(); };
 
     footer.appendChild(btnCancel);
     footer.appendChild(btnOk);
@@ -879,14 +968,10 @@ function selectCakeShape(idx, shapeVal) {
     const shpGroup = document.getElementById('shapeGroup_' + idx);
     if (shpGroup) {
         shpGroup.querySelectorAll('.btn-duo-outline').forEach(btn => {
-            if (btn.dataset.shape === shapeVal) {
-                btn.classList.add('active');
-            } else {
-                btn.classList.remove('active');
-            }
+            if (btn.dataset.shape === shapeVal) btn.classList.add('active');
+            else btn.classList.remove('active');
         });
     }
-
     updateCakeUI(idx);
 }
 
@@ -897,14 +982,10 @@ function selectCakeTier(idx, tierVal) {
     const tierGroup = document.getElementById('tiersWrapper_' + idx);
     if (tierGroup) {
         tierGroup.querySelectorAll('.btn-duo-outline').forEach(btn => {
-            if (btn.dataset.tier === tierVal) {
-                btn.classList.add('active');
-            } else {
-                btn.classList.remove('active');
-            }
+            if (btn.dataset.tier === tierVal) btn.classList.add('active');
+            else btn.classList.remove('active');
         });
     }
-
     updateCakeUI(idx);
 }
 
@@ -914,37 +995,30 @@ function createIsometricCakeSVG(tiers, shape) {
 
     if (shape === 'square' || shape === 'rect') {
         const cuboidSpecs = { 
-            '6':     { w: 75,  depthX: 30, depthY: 18, h: 32 },
-            '8':     { w: 95,  depthX: 36, depthY: 20, h: 36 },
-            '10':    { w: 115, depthX: 42, depthY: 22, h: 40 },
-            '12':    { w: 135, depthX: 48, depthY: 24, h: 44 },
-            '8x12':  { w: 125, depthX: 40, depthY: 22, h: 36 },
+            '6': { w: 75, depthX: 30, depthY: 18, h: 32 },
+            '8': { w: 95, depthX: 36, depthY: 20, h: 36 },
+            '10': { w: 115, depthX: 42, depthY: 22, h: 40 },
+            '12': { w: 135, depthX: 48, depthY: 24, h: 44 },
+            '8x12': { w: 125, depthX: 40, depthY: 22, h: 36 },
             '10x14': { w: 155, depthX: 48, depthY: 26, h: 40 }
         };
 
         const sizeKey = tiers[0].size;
         const spec = cuboidSpecs[sizeKey] || { w: 100, depthX: 36, depthY: 20, h: 36 };
 
-        const w = spec.w;
-        const h = spec.h;
-        const depthX = spec.depthX;
-        const depthY = spec.depthY;
-
-        const padX = 14;
-        const padY = 16;
+        const w = spec.w; const h = spec.h;
+        const depthX = spec.depthX; const depthY = spec.depthY;
+        const padX = 14; const padY = 16;
 
         const totalW = w + depthX + (padX * 2);
         const totalH = h + depthY + (padY * 2) + 6;
 
         svg.setAttribute('viewBox', `0 0 ${totalW} ${totalH}`);
-        svg.setAttribute('width', totalW);
-        svg.setAttribute('height', totalH);
+        svg.setAttribute('width', totalW); svg.setAttribute('height', totalH);
 
         const g = document.createElementNS(ns, 'g');
-
         const boardMargin = 10;
-        const bx = padX - boardMargin;
-        const by = totalH - padY - 2;
+        const bx = padX - boardMargin; const by = totalH - padY - 2;
         const bw = w + (boardMargin * 2);
         const bDepthX = depthX + boardMargin + 4;
         const bDepthY = depthY + 4;
@@ -961,13 +1035,9 @@ function createIsometricCakeSVG(tiers, shape) {
         bBoardRight.setAttribute('points', `${bx + bw},${by - 4} ${bx + bw + bDepthX},${by - 4 - bDepthY} ${bx + bw + bDepthX},${by - bDepthY} ${bx + bw},${by}`);
         bBoardRight.setAttribute('class', 'svg-board-side');
 
-        g.appendChild(bBoardTop);
-        g.appendChild(bBoardFront);
-        g.appendChild(bBoardRight);
+        g.appendChild(bBoardTop); g.appendChild(bBoardFront); g.appendChild(bBoardRight);
 
-        const cx = padX;
-        const cy = by - 4;
-
+        const cx = padX; const cy = by - 4;
         const topFace = document.createElementNS(ns, 'polygon');
         topFace.setAttribute('points', `${cx},${cy - h} ${cx + w},${cy - h} ${cx + w + depthX},${cy - h - depthY} ${cx + depthX},${cy - h - depthY}`);
         topFace.setAttribute('class', 'svg-cake-top');
@@ -981,24 +1051,17 @@ function createIsometricCakeSVG(tiers, shape) {
         rightFace.setAttribute('class', 'svg-cake-side');
 
         const text = document.createElementNS(ns, 'text');
-        text.setAttribute('x', cx + (w / 2));
-        text.setAttribute('y', cy - (h / 2) + 12);
-        text.setAttribute('text-anchor', 'middle');
-        text.setAttribute('class', 'svg-cake-text');
+        text.setAttribute('x', cx + (w / 2)); text.setAttribute('y', cy - (h / 2) + 12);
+        text.setAttribute('text-anchor', 'middle'); text.setAttribute('class', 'svg-cake-text');
         text.textContent = tiers[0].label || (tiers[0].size + '"');
 
-        g.appendChild(topFace);
-        g.appendChild(frontFace);
-        g.appendChild(rightFace);
-        g.appendChild(text);
-
+        g.appendChild(topFace); g.appendChild(frontFace); g.appendChild(rightFace); g.appendChild(text);
         svg.appendChild(g);
         return svg;
     }
 
     const tierWidths = { '6': 64, '8': 86, '10': 108, '12': 128, '14': 148 };
-    const tierHeight = 48;
-    const ellipseYFactor = 0.38;
+    const tierHeight = 48; const ellipseYFactor = 0.38;
 
     const bottomSize = tiers[0].size;
     const bottomTierWidth = tierWidths[bottomSize] || 86;
@@ -1010,8 +1073,7 @@ function createIsometricCakeSVG(tiers, shape) {
     const totalHeight = (tiers.length * tierHeight) + boardRy + topMargin + 8;
 
     svg.setAttribute('viewBox', `0 0 ${baseWidth} ${totalHeight}`);
-    svg.setAttribute('width', baseWidth);
-    svg.setAttribute('height', totalHeight);
+    svg.setAttribute('width', baseWidth); svg.setAttribute('height', totalHeight);
 
     const g = document.createElementNS(ns, 'g');
     const centerX = baseWidth / 2;
@@ -1022,22 +1084,17 @@ function createIsometricCakeSVG(tiers, shape) {
     boardPath.setAttribute('class', 'svg-board-side');
 
     const boardTop = document.createElementNS(ns, 'ellipse');
-    boardTop.setAttribute('cx', centerX);
-    boardTop.setAttribute('cy', boardY);
-    boardTop.setAttribute('rx', boardRx);
-    boardTop.setAttribute('ry', boardRy);
+    boardTop.setAttribute('cx', centerX); boardTop.setAttribute('cy', boardY);
+    boardTop.setAttribute('rx', boardRx); boardTop.setAttribute('ry', boardRy);
     boardTop.setAttribute('class', 'svg-board-top');
 
-    g.appendChild(boardPath);
-    g.appendChild(boardTop);
+    g.appendChild(boardPath); g.appendChild(boardTop);
 
     let currentY = boardY;
-
     for (let i = 0; i < tiers.length; i++) {
         const tier = tiers[i];
         const width = tierWidths[tier.size] || 76;
-        const rx = width / 2;
-        const ry = rx * ellipseYFactor;
+        const rx = width / 2; const ry = rx * ellipseYFactor;
         const topY = currentY - tierHeight;
 
         const bodyPath = document.createElementNS(ns, 'path');
@@ -1045,23 +1102,16 @@ function createIsometricCakeSVG(tiers, shape) {
         bodyPath.setAttribute('class', 'svg-cake-front');
 
         const topCap = document.createElementNS(ns, 'ellipse');
-        topCap.setAttribute('cx', centerX);
-        topCap.setAttribute('cy', topY);
-        topCap.setAttribute('rx', rx);
-        topCap.setAttribute('ry', ry);
+        topCap.setAttribute('cx', centerX); topCap.setAttribute('cy', topY);
+        topCap.setAttribute('rx', rx); topCap.setAttribute('ry', ry);
         topCap.setAttribute('class', 'svg-cake-top');
 
         const text = document.createElementNS(ns, 'text');
-        text.setAttribute('x', centerX);
-        text.setAttribute('y', topY + (tierHeight / 2) + 14);
-        text.setAttribute('text-anchor', 'middle');
-        text.setAttribute('class', 'svg-cake-text');
+        text.setAttribute('x', centerX); text.setAttribute('y', topY + (tierHeight / 2) + 14);
+        text.setAttribute('text-anchor', 'middle'); text.setAttribute('class', 'svg-cake-text');
         text.textContent = tier.label || (tier.size + '"');
 
-        g.appendChild(bodyPath);
-        g.appendChild(topCap);
-        g.appendChild(text);
-
+        g.appendChild(bodyPath); g.appendChild(topCap); g.appendChild(text);
         currentY = topY;
     }
 
@@ -1172,15 +1222,14 @@ function addMessageRow(itemIdx, defaultText, defaultPlacement, defaultColor) {
     input.name = 'items[' + itemIdx + '][messages][' + mIdx + '][text]';
     input.className = 'clean-input msg-input';
     input.value = defaultText || '';
-    input.placeholder = 'e.g. Happy 18th Birthday Sarah!';
+    input.placeholder = 'e.g. Happy Birthday Sarah!';
 
     const select = document.createElement('select');
     select.name = 'items[' + itemIdx + '][messages][' + mIdx + '][placement]';
     select.className = 'clean-input msg-select';
     ['Top', 'Front'].forEach(p => {
         const opt = document.createElement('option');
-        opt.value = p;
-        opt.textContent = p;
+        opt.value = p; opt.textContent = p;
         if ((defaultPlacement || 'Top') === p) opt.selected = true;
         select.appendChild(opt);
     });
@@ -1198,23 +1247,10 @@ function addMessageRow(itemIdx, defaultText, defaultPlacement, defaultColor) {
     const deleteBtn = document.createElement('button');
     deleteBtn.type = 'button';
     deleteBtn.className = 'btn-delete';
-    deleteBtn.title = 'Remove';
     deleteBtn.onclick = () => removeMessageRow(itemIdx, mIdx);
+    deleteBtn.innerHTML = `<svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>`;
 
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svg.setAttribute('width', '20'); svg.setAttribute('height', '20'); svg.setAttribute('fill', 'none');
-    svg.setAttribute('stroke', 'currentColor'); svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('stroke-width', '2');
-    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.setAttribute('stroke-linecap', 'round'); path.setAttribute('stroke-linejoin', 'round');
-    path.setAttribute('d', 'M6 18L18 6M6 6l12 12');
-    svg.appendChild(path);
-    deleteBtn.appendChild(svg);
-
-    row.appendChild(input);
-    row.appendChild(select);
-    row.appendChild(colorWrapper);
-    row.appendChild(deleteBtn);
-
+    row.appendChild(input); row.appendChild(select); row.appendChild(colorWrapper); row.appendChild(deleteBtn);
     container.appendChild(row);
 }
 
@@ -1272,7 +1308,7 @@ function removeItemCard(index) {
 }
 
 function openCakeAlbumModal() {
-    alert("Opening Business Cake Album (Album view coming soon!).");
+    alert("Opening Business Cake Album.");
 }
 
 function setupDragAndDrop(idx) {
@@ -1296,16 +1332,17 @@ function handleFileSelect(e, idx) {
 }
 
 function clearImage(e, idx) {
-    if (e) {
-        e.preventDefault();
-        e.stopPropagation();
-    }
+    if (e) { e.preventDefault(); e.stopPropagation(); }
     const fileInput = document.getElementById('fileInput_' + idx);
     const preview = document.getElementById('preview_' + idx);
     const actionsOverlay = document.getElementById('actionsOverlay_' + idx);
     const placeholder = document.getElementById('placeholder_' + idx);
     const dropZone = document.getElementById('dropZone_' + idx);
     const aiResult = document.getElementById('aiResult_' + idx);
+
+    if (preview && preview.src.startsWith('blob:')) {
+        URL.revokeObjectURL(preview.src);
+    }
 
     if (fileInput) fileInput.value = ''; 
     if (preview) { preview.src = ''; preview.classList.add('hidden-element'); preview.classList.remove('is-active'); }
@@ -1322,7 +1359,9 @@ async function processImage(file, idx) {
     const actionsOverlay = document.getElementById('actionsOverlay_' + idx);
     const loader = document.getElementById('loader_' + idx);
 
-    const imageObjectURL = URL.createObjectURL(file);
+    // Fast Canvas Downscale before API transmission
+    const compressedFile = await compressImageFile(file);
+    const imageObjectURL = URL.createObjectURL(compressedFile);
 
     if (preview) {
         preview.src = imageObjectURL; 
@@ -1335,16 +1374,21 @@ async function processImage(file, idx) {
     if (loader) loader.classList.add('visible');
 
     let formData = new FormData();
-    formData.append('image', file);
+    formData.append('image', compressedFile);
     formData.append('_token', csrfToken);
 
     try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 12000);
+
         const response = await fetch(visionRoute, { 
             method: 'POST', 
             body: formData, 
-            headers: { 'Accept': 'application/json' } 
+            headers: { 'Accept': 'application/json' },
+            signal: controller.signal
         });
         
+        clearTimeout(timeoutId);
         const data = await response.json();
         if (loader) loader.classList.remove('visible');
 
@@ -1352,19 +1396,13 @@ async function processImage(file, idx) {
             if (data.theme) {
                 const aiResult = document.getElementById('aiResult_' + idx);
                 const themeInput = document.getElementById('themeInput_' + idx);
-                if (aiResult) {
-                    aiResult.classList.remove('hidden-element');
-                    aiResult.classList.add('is-active');
-                }
+                if (aiResult) aiResult.classList.remove('hidden-element');
                 if (themeInput) themeInput.value = data.theme;
             }
             if (data.description) {
                 const aiResult = document.getElementById('aiResult_' + idx);
                 const descInput = document.getElementById('descInput_' + idx);
-                if (aiResult) {
-                    aiResult.classList.remove('hidden-element');
-                    aiResult.classList.add('is-active');
-                }
+                if (aiResult) aiResult.classList.remove('hidden-element');
                 if (descInput) descInput.value = data.description;
             }
 
@@ -1392,19 +1430,14 @@ async function processImage(file, idx) {
             if (data.messages && data.messages.length > 0) {
                 const msgContainer = document.getElementById('messagesContainer_' + idx);
                 if (msgContainer) msgContainer.textContent = '';
-                data.messages.forEach(m => {
-                    addMessageRow(idx, m.text, m.placement, m.color);
-                });
+                data.messages.forEach(m => addMessageRow(idx, m.text, m.placement, m.color));
             }
         } else {
-            alert("AI Error: " + (data.error || "Could not process image."));
-            clearImage(null, idx);
+            alert("AI Extraction Note: Could not auto-detect design specs. You can fill in specs manually.");
         }
     } catch (error) {
         if (loader) loader.classList.remove('visible');
-        console.error("Network / Extraction Error:", error);
-        alert("Network connection failed or server error occurred. Please try uploading again.");
-        clearImage(null, idx);
+        console.error("Extraction Error:", error);
     }
 }
 
@@ -1510,16 +1543,9 @@ function addItemCard(type) {
         ], 'Chocolate');
         flvGroup.appendChild(flvLabel); flvGroup.appendChild(flvDropdown); fieldsCol.appendChild(flvGroup);
 
-        const shpGroup = document.createElement('div'); 
-        shpGroup.className = 'input-group input-group-mb16'; 
-        
-        const shpLabel = document.createElement('label'); 
-        shpLabel.className = 'input-label'; 
-        shpLabel.textContent = 'Shape';
-        
-        const shpPillGrid = document.createElement('div'); 
-        shpPillGrid.className = 'pill-grid'; 
-        shpPillGrid.id = 'shapeGroup_' + itemIndex;
+        const shpGroup = document.createElement('div'); shpGroup.className = 'input-group input-group-mb16';
+        const shpLabel = document.createElement('label'); shpLabel.className = 'input-label'; shpLabel.textContent = 'Shape';
+        const shpPillGrid = document.createElement('div'); shpPillGrid.className = 'pill-grid'; shpPillGrid.id = 'shapeGroup_' + itemIndex;
         
         ['Round', 'Square', 'Rectangle'].forEach(s => {
             const btn = document.createElement('button'); 
@@ -1537,21 +1563,11 @@ function addItemCard(type) {
         hiddenShape.id = 'hidden_shape_' + itemIndex; 
         hiddenShape.value = 'Round';
         
-        shpGroup.appendChild(shpLabel); 
-        shpGroup.appendChild(shpPillGrid); 
-        shpGroup.appendChild(hiddenShape); 
-        fieldsCol.appendChild(shpGroup);
+        shpGroup.appendChild(shpLabel); shpGroup.appendChild(shpPillGrid); shpGroup.appendChild(hiddenShape); fieldsCol.appendChild(shpGroup);
 
-        const tierGroup = document.createElement('div'); 
-        tierGroup.className = 'input-group input-group-mb16'; 
-        tierGroup.id = 'tiersWrapper_' + itemIndex; 
-        
-        const tierLabel = document.createElement('label'); 
-        tierLabel.className = 'input-label'; 
-        tierLabel.textContent = 'Tiers';
-        
-        const tierPillGrid = document.createElement('div'); 
-        tierPillGrid.className = 'pill-grid'; 
+        const tierGroup = document.createElement('div'); tierGroup.className = 'input-group input-group-mb16'; tierGroup.id = 'tiersWrapper_' + itemIndex;
+        const tierLabel = document.createElement('label'); tierLabel.className = 'input-label'; tierLabel.textContent = 'Tiers';
+        const tierPillGrid = document.createElement('div'); tierPillGrid.className = 'pill-grid';
         
         ['1 Tier', '2 Tiers', '3 Tiers'].forEach(t => {
             const btn = document.createElement('button'); 
@@ -1569,10 +1585,7 @@ function addItemCard(type) {
         hiddenTier.id = 'hidden_tier_' + itemIndex; 
         hiddenTier.value = '1 Tier';
         
-        tierGroup.appendChild(tierLabel); 
-        tierGroup.appendChild(tierPillGrid); 
-        tierGroup.appendChild(hiddenTier); 
-        fieldsCol.appendChild(tierGroup);
+        tierGroup.appendChild(tierLabel); tierGroup.appendChild(tierPillGrid); tierGroup.appendChild(hiddenTier); fieldsCol.appendChild(tierGroup);
 
         const szGroup = document.createElement('div'); szGroup.className = 'input-group input-group-mb16';
         const szLabel = document.createElement('label'); szLabel.className = 'size-tray-label'; szLabel.textContent = 'Size Tray (Centered & Ascending)';
@@ -1654,11 +1667,10 @@ function addItemCard(type) {
         topLbl.appendChild(topCb); topLbl.appendChild(topTxt); topSec.appendChild(topLbl);
 
         const topSub = document.createElement('div'); topSub.id = 'topperSub_' + itemIndex; topSub.className = 'topper-sub-container hidden-element';
-        const topArea = document.createElement('textarea'); topArea.name = 'items[' + itemIndex + '][topper_instructions]'; topArea.className = 'clean-input'; topArea.rows = 2; topArea.placeholder = 'Describe toppers (e.g. Printed 2D character pics or molded fondant numbers)...';
+        const topArea = document.createElement('textarea'); topArea.name = 'items[' + itemIndex + '][topper_instructions]'; topArea.className = 'clean-input'; topArea.rows = 2; topArea.placeholder = 'Describe toppers (e.g. Printed 2D character pics)...';
         topSub.appendChild(topArea); topSec.appendChild(topSub); card.appendChild(topSec);
 
         card.appendChild(createThankYouTagNode(itemIndex));
-
         setTimeout(() => { updateCupcakeIcingUI(cIdx, 'single'); }, 50);
 
     } else if (type === 'giveaway_loaf') {
@@ -1733,19 +1745,11 @@ function updateCupcakeQtyStep(itemIdx, pkgValue) {
     const topperSec = document.getElementById('cupcakeTopperSec_' + itemIdx);
 
     if (pkgValue === 'single_giveaway_box') {
-        if (qtyInput) {
-            qtyInput.step = "1";
-            qtyInput.min = "1";
-            qtyInput.value = "1";
-        }
+        if (qtyInput) { qtyInput.step = "1"; qtyInput.min = "1"; qtyInput.value = "1"; }
         if (qtyHelp) qtyHelp.textContent = "Order exact single piece quantity (Increments of 1)";
         if (topperSec) topperSec.style.display = "none";
     } else {
-        if (qtyInput) {
-            qtyInput.step = "6";
-            qtyInput.min = "6";
-            qtyInput.value = "12";
-        }
+        if (qtyInput) { qtyInput.step = "6"; qtyInput.min = "6"; qtyInput.value = "12"; }
         if (qtyHelp) qtyHelp.textContent = "Increments of 6 pieces";
         if (topperSec) topperSec.style.display = "block";
     }
@@ -1797,8 +1801,7 @@ function createUploadDropZoneNode(itemIndex) {
     zoomBtn.className = 'btn-img-action btn-img-zoom';
     zoomBtn.title = 'Zoom Image';
     zoomBtn.onclick = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
+        e.preventDefault(); e.stopPropagation();
         const prv = document.getElementById('preview_' + cIdx);
         if (prv && prv.src) openZoomModal(prv.src);
     };
@@ -1812,8 +1815,7 @@ function createUploadDropZoneNode(itemIndex) {
     clearBtn.onclick = (e) => clearImage(e, cIdx);
     clearBtn.innerHTML = `<svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>`;
 
-    actionsOverlay.appendChild(zoomBtn);
-    actionsOverlay.appendChild(clearBtn);
+    actionsOverlay.appendChild(zoomBtn); actionsOverlay.appendChild(clearBtn);
 
     const loader = document.createElement('div');
     loader.id = 'loader_' + itemIndex; 
@@ -1830,11 +1832,7 @@ function createUploadDropZoneNode(itemIndex) {
     lSpan.textContent = 'Extracting Specs...';
     loader.appendChild(lSvg); loader.appendChild(lSpan);
 
-    dropZone.appendChild(fileInput); 
-    dropZone.appendChild(placeholder); 
-    dropZone.appendChild(preview); 
-    dropZone.appendChild(actionsOverlay); 
-    dropZone.appendChild(loader);
+    dropZone.appendChild(fileInput); dropZone.appendChild(placeholder); dropZone.appendChild(preview); dropZone.appendChild(actionsOverlay); dropZone.appendChild(loader);
 
     return dropZone;
 }
