@@ -3,26 +3,31 @@
 @font-face {
     font-family: 'modern-bold';
     src: url('../fonts/samsungsharpsans-bold.otf') format('opentype');
+    font-display: swap;
 }
 
 @font-face {
     font-family: 'Mango Grotesque';
     src: url('../fonts/MangoGrotesque-Regular.otf') format('truetype');
+    font-display: swap;
 }
 
 @font-face {
     font-family: 'Jomhuria';
     src: url('../fonts/Jomhuria-Regular.ttf') format('truetype');
+    font-display: swap;
 }
 
 @font-face {
     font-family: 'Recoleta-Bold';
     src: url('../fonts/Recoleta Bold.otf') format('opentype');
+    font-display: swap;
 }
 
 @font-face {
     font-family: 'Aloevera';
     src: url('../Aloevera.ttf') format('truetype');
+    font-display: swap;
 }
 
 :root {
@@ -47,11 +52,42 @@
     padding: 0;
 }
 
+/* Performance optimizations */
+.perf-optimized {
+    contain: layout style paint;
+    content-visibility: auto;
+    contain-intrinsic-size: 1px 1000px;
+}
+
+.will-change-transform {
+    will-change: transform;
+}
+
+.will-change-opacity {
+    will-change: opacity;
+}
+
+.will-change-transform-opacity {
+    will-change: transform, opacity;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
 body {
     background-color: var(--purple-dark);
-    background-image: radial-gradient(var(--purple-main) 20%, transparent 20%), radial-gradient(var(--purple-main) 20%, transparent 20%);
+    background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='0' cy='0' r='8' fill='%238a38f5' fill-opacity='0.3'/%3E%3Ccircle cx='20' cy='20' r='8' fill='%238a38f5' fill-opacity='0.3'/%3E%3C/svg%3E");
     background-size: 40px 40px;
-    background-position: 0 0, 20px 20px;    
+    background-position: 0 0;
     font-family: 'Manrope', sans-serif;
     width: 100%;
     height: 100vh;
@@ -1112,27 +1148,30 @@ body {
 }
 
 .page-wrapper {
-    background: #FFFFFF; 
+    background: #FFFFFF;
     width: 100%;
     height: 100vh;
-    overflow: hidden; 
+    overflow: hidden;
     overflow-y: auto;
     scroll-behavior: smooth;
     -webkit-overflow-scrolling: touch;
     position: relative;
-    z-index: 2; 
-    transform-origin: center center; 
-    transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1), 
-                box-shadow 0.6s cubic-bezier(0.16, 1, 0.3, 1), 
+    z-index: 2;
+    transform-origin: center center;
+    transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+                box-shadow 0.6s cubic-bezier(0.16, 1, 0.3, 1),
                 border-radius 0.6s cubic-bezier(0.16, 1, 0.3, 1);
     will-change: transform, box-shadow, border-radius;
-    transform: translate3d(0, 0, 0); 
+    transform: translate3d(0, 0, 0);
     backface-visibility: hidden;
     perspective: 1000px;
     -webkit-font-smoothing: antialiased;
-    outline: 1px solid transparent; 
+    outline: 1px solid transparent;
     border-radius: 0px;
     box-shadow: 0px 0px 0px rgba(0,0,0,0);
+    contain: layout style paint;
+    content-visibility: auto;
+    contain-intrinsic-size: 1px 100vh;
 }
 
 #menu-toggle:checked ~ .page-wrapper::-webkit-scrollbar {
@@ -1160,11 +1199,11 @@ body {
     position: fixed;
     top: 0;
     right: 0;
-    width: 48vw; 
+    width: 48vw;
     height: 100vh;
-    background: transparent; 
-    z-index: 1; 
-    padding: 60px 40px; 
+    background: transparent;
+    z-index: 1;
+    padding: 60px 40px;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -1175,6 +1214,15 @@ body {
     transition: opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1), transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
     pointer-events: none;
     will-change: transform, opacity;
+    contain: layout style paint;
+    content-visibility: auto;
+    contain-intrinsic-size: 1px 100vh;
+}
+
+#menu-toggle:checked ~ .side-menu-reveal {
+    opacity: 1;
+    transform: scale(1) translateZ(0);
+    pointer-events: auto;
 }
 
 #menu-toggle:checked ~ .side-menu-reveal {
@@ -1627,6 +1675,13 @@ body {
     margin-top: -2px;
 }
 
+/* Tablet landscape and small desktop */
+@media (max-width: 1200px) {
+    :root {
+        --gutter: clamp(16px, 3vw, 40px);
+    }
+}
+
 @media (max-width: 1024px) {
     .loaves-grid {
         grid-template-columns: repeat(2, 1fr);
@@ -1651,15 +1706,28 @@ body {
     #menu-toggle:checked ~ .page-wrapper {
         transform: translateX(-70vw) scale(0.85);
     }
+
+    .mid-row {
+        grid-template-columns: 1fr;
+    }
+
+    .mid-col-stack {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+
+    .mid-col-stack > * {
+        flex: 1 1 calc(50% - 10px);
+    }
 }
 
 @media (max-width: 768px) {
     .header {
-        padding: 12px;
+        padding: 12px clamp(16px, 4vw, 24px);
     }
 
     .logo-text-stacked {
-        font-size: 10px;
+        font-size: clamp(9px, 0.8vw, 11px);
     }
 
     .loaves-grid {
@@ -1708,47 +1776,84 @@ body {
     .footer {
         padding-bottom: 120px;
     }
+
+    .mid-col-stack > * {
+        flex: 1 1 100%;
+    }
+
+    .header-controls .contact-btn span {
+        display: none;
+    }
+
+    .contact-btn {
+        padding: 6px 10px;
+    }
+
+    .marquee {
+        padding: clamp(4px, 0.4vw, 6px) 0;
+    }
+
+    .carousel-img {
+        width: clamp(140px, 22vw, 220px);
+        height: clamp(180px, 28vw, 280px);
+    }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 600px) {
+    :root {
+        --gutter: clamp(12px, 3vw, 20px);
+    }
+
     .header-controls .contact-btn {
         display: none;
     }
 
     .hero-title .t1 {
-        font-size: 24px;
+        font-size: clamp(22px, 3vw, 28px);
     }
 
     .hero-title .t2 {
-        font-size: 44px;
+        font-size: clamp(40px, 4.5vw, 52px);
     }
 
     .btn-shop-now {
-        padding: 0 18px;
-        height: 52px;
-        font-size: 18px;
+        padding: 0 clamp(14px, 2vw, 20px);
+        height: clamp(48px, 5.5vw, 60px);
+        font-size: clamp(16px, 2vw, 22px);
     }
 
     .yema-bg-text .text-classic {
-        font-size: 80px;
+        font-size: clamp(70px, 14vw, 100px);
     }
 
     .yema-sub-group .text-yema {
-        font-size: 42px;
+        font-size: clamp(38px, 6vw, 52px);
     }
 
     .btn-shop-yema {
-        bottom: 12px;
-        right: 12px;
-        padding: 4px 6px 4px 14px;
+        bottom: 10px;
+        right: 10px;
+        padding: 4px 6px 4px 12px;
+    }
+
+    .testimonials-title {
+        font-size: clamp(20px, 2.8vw, 32px);
+    }
+
+    .testimonials-title .italic-review {
+        font-size: clamp(24px, 3.5vw, 42px);
+    }
+
+    .footer-heading {
+        font-size: clamp(36px, 5vw, 56px);
     }
 }
 
 @media (max-width: 480px) {
     .side-menu-reveal {
-            width: 100vw;
-            padding: 40px 16px;
-        }
+        width: 100vw;
+        padding: 40px 16px;
+    }
 
     .menu-card-box {
         max-width: 100%;
@@ -1765,7 +1870,61 @@ body {
     }
 
     .logout-3d-btn {
-        font-size: 20px;
-        padding: 10px 18px;
+        font-size: clamp(18px, 2.2vw, 22px);
+        padding: 10px 16px;
+    }
+
+    .hero-section {
+        min-height: clamp(300px, 50vw, 420px);
+        padding: clamp(20px, 3vw, 40px) var(--gutter);
+    }
+
+    .cake-tl { width: clamp(180px, 30vw, 300px); top: -30px; left: -40px; }
+    .cake-tr { width: clamp(180px, 30vw, 300px); top: -50px; right: -30px; }
+    .cake-bl { width: clamp(200px, 35vw, 400px); top: 180px; left: -20px; }
+    .cake-br { width: clamp(180px, 30vw, 300px); bottom: -80px; right: -50px; }
+
+    .footer-dynamic-icon {
+        height: clamp(35px, 5vw, 55px);
+    }
+
+    .footer-copyright {
+        left: clamp(12px, 3vw, 20px);
+        bottom: clamp(10px, 2vw, 20px);
+    }
+}
+
+/* Large desktop */
+@media (min-width: 1440px) {
+    :root {
+        --content-max: 1440px;
+        --gutter: 80px;
+    }
+}
+
+/* Touch device optimizations */
+@media (hover: none) and (pointer: coarse) {
+    .loaf-card-btn:hover,
+    .btn-shop-now:hover,
+    .btn-shop-yema:hover,
+    .social-scallop:hover,
+    .carousel-arrow:hover,
+    .footer-signup-btn:hover,
+    .logout-3d-btn:hover,
+    .contact-btn:hover,
+    .close-btn:hover,
+    .lock-btn:hover {
+        transform: none;
+        box-shadow: none;
+        background: inherit;
+        color: inherit;
+    }
+
+    .loaf-card-btn:active,
+    .btn-shop-now:active,
+    .btn-shop-yema:active,
+    .logout-3d-btn:active {
+        transform: translate(4px, 6px);
+        box-shadow: 0 0 0 transparent;
     }
 }

@@ -233,7 +233,7 @@
                         <img src="{{ asset('images/carousel/010.jpeg') }}" alt="Lifestyle 10" class="carousel-img">
                     </div>
                 </div>
-
+                
                 <!-- Bottom Carousel: Moving Right -->
                 <div class="infinite-carousel-wrapper">
                     <div class="infinite-track track-right">

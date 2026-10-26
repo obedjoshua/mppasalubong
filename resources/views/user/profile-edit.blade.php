@@ -6,9 +6,27 @@
     <title>Edit Profile | Masaganang Pagpapala</title>
     <link rel="icon" type="image/x-icon" href="{{ asset('images/logo.png') }}">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ asset('css/welcome.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/loader.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}">
+    <link rel="preload" href="{{ asset('css/welcome.css') }}" as="style">
+    <link rel="preload" href="{{ asset('css/loader.css') }}" as="style">
+    <link rel="preload" href="{{ asset('css/dashboard.css') }}" as="style">
+    <link rel="stylesheet" href="{{ asset('css/welcome.css') }}" media="print" onload="this.media='all'">
+    <link rel="stylesheet" href="{{ asset('css/loader.css') }}" media="print" onload="this.media='all'">
+    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}" media="print" onload="this.media='all'">
+
+    <!-- Register Service Worker for offline capability -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('{{ asset('sw.js') }}')
+                    .then(registration => {
+                        console.log('SW registered:', registration.scope);
+                    })
+                    .catch(error => {
+                        console.log('SW registration failed:', error);
+                    });
+            });
+        }
+    </script>
 </head>
 <body>
     @include('partials.loader')
@@ -32,9 +50,9 @@
                         
                         <div class="live-preview-wrapper" style="margin: 0 auto;">
                             <!-- PFP Layer -->
-                            <img id="preview-avatar" src="{{ !empty($user->avatar) ? asset($user->avatar) : asset('images/default-avatar.jpeg') }}" class="live-preview-avatar">
+                            <img id="preview-avatar" src="{{ !empty($user->avatar) ? asset($user->avatar) : asset('images/default-avatar.jpeg') }}" class="live-preview-avatar" >
                             <!-- Frame Layer -->
-                            <img id="preview-frame" src="{{ asset('images/frames/' . ($user->selected_frame ?? 'frame_reg01') . '.png') }}" class="live-preview-frame">
+                            <img id="preview-frame" src="{{ asset('images/frames/' . ($user->selected_frame ?? 'frame_reg01') . '.png') }}" class="live-preview-frame" >
                         </div>
 
                     </div>

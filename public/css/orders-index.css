@@ -136,6 +136,7 @@ body {
     box-shadow: 0 12px 24px rgba(0, 0, 0, 0.25);
     border: 4px solid #FFFFFF;
     transition: transform 0.3s ease, opacity 0.3s ease;
+    display: block;
 }
 
 .cake-l1 {
@@ -373,7 +374,7 @@ body {
     .hero-cake { 
         width: 130px; 
         height: 130px; 
-        opacity: 0.8;
+        opacity: 0.85;
     }
 
     .cake-l1 { top: -10px; left: -30px; }
@@ -409,7 +410,7 @@ body {
     }
 
     .hero-cake {
-        opacity: 0.35;
+        opacity: 0.4;
         width: 100px;
         height: 100px;
     }

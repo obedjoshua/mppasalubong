@@ -15,8 +15,7 @@ class OrderController extends Controller
 {
     // Shop Coordinates Constants
     const MAIN_SHOP = ['lat' => 15.186235193924075, 'lng' => 120.95964131143174];
-
-    const SAN_JOSE = ['lat' => 15.147108923134585, 'lng' => 120.97994960855327];
+    const SAN_JOSE  = ['lat' => 15.147108923134585, 'lng' => 120.97994960855327];
 
     public function index()
     {
@@ -48,23 +47,28 @@ class OrderController extends Controller
 
     public function store(Request $request)
     {
+        // Default customer_name to authenticated user's name if not provided
+        if (! $request->has('customer_name') && Auth::check()) {
+            $request->merge(['customer_name' => Auth::user()->name ?? 'Valued Customer']);
+        }
+
         $validated = $request->validate([
-            'customer_name' => 'required|string|max:255',
-            'customer_location' => 'required|string',
-            'pickup_branch' => 'required|string|in:main_shop,san_jose',
-            'pickup_date' => 'required|date',
-            'pickup_time' => 'required|string',
-            'lat' => 'nullable|numeric',
-            'lng' => 'nullable|numeric',
+            'customer_name'    => 'required|string|max:255',
+            'customer_address' => 'required|string',
+            'pickup_branch'    => 'required|string|in:main_shop,san_jose',
+            'pickup_date'      => 'required|date',
+            'pickup_time'      => 'required|string',
+            'customer_lat'     => 'nullable|numeric',
+            'customer_lng'     => 'nullable|numeric',
             'additional_notes' => 'nullable|string',
-            'items' => 'required|array|min:1',
-            'items.*.item_type' => 'required|string',
+            'items'            => 'required|array|min:1',
+            'items.*.item_type'=> 'required|string',
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.reference_image' => 'nullable|image|max:10240',
         ]);
 
-        $lat = $request->input('lat');
-        $lng = $request->input('lng');
+        $lat = $request->input('customer_lat');
+        $lng = $request->input('customer_lng');
         $distKm = null;
 
         if ($lat && $lng) {
@@ -85,21 +89,21 @@ class OrderController extends Controller
             $preferredChannel = $messengerId ? 'messenger' : 'email';
 
             $ticket = OrderTicket::create([
-                'user_id' => Auth::id(),
-                'customer_name' => $validated['customer_name'],
-                'customer_email' => $user ? $user->email : null,
-                'customer_phone' => $user ? ($user->phone ?? null) : null,
-                'facebook_messenger_id' => $messengerId,
-                'pickup_branch' => $validated['pickup_branch'],
-                'location_address' => $validated['customer_location'],
-                'customer_latitude' => $lat,
-                'customer_longitude' => $lng,
-                'calculated_distance_km' => $distKm,
-                'pickup_date' => $validated['pickup_date'],
-                'pickup_time' => $validated['pickup_time'],
-                'additional_notes' => $validated['additional_notes'] ?? null,
-                'status' => 'Pending Staff Review',
-                'qr_token' => Str::random(64),
+                'user_id'                         => Auth::id(),
+                'customer_name'                   => $validated['customer_name'],
+                'customer_email'                  => $user ? $user->email : null,
+                'customer_phone'                  => $user ? ($user->phone ?? null) : null,
+                'facebook_messenger_id'           => $messengerId,
+                'pickup_branch'                   => $validated['pickup_branch'],
+                'location_address'                => $validated['customer_address'],
+                'customer_latitude'               => $lat,
+                'customer_longitude'              => $lng,
+                'calculated_distance_km'          => $distKm,
+                'pickup_date'                     => $validated['pickup_date'],
+                'pickup_time'                     => $validated['pickup_time'],
+                'additional_notes'                => $validated['additional_notes'] ?? null,
+                'status'                          => 'Pending Staff Review',
+                'qr_token'                        => Str::random(64),
                 'preferred_notification_channel' => $preferredChannel,
             ]);
 
@@ -120,7 +124,6 @@ class OrderController extends Controller
                 if ($request->hasFile("items.{$index}.reference_image")) {
                     $file = $request->file("items.{$index}.reference_image");
 
-                    // Store the uploaded reference image in the database as a data URI.
                     $base64 = base64_encode(file_get_contents($file->getRealPath()));
                     $mime = $file->getMimeType();
                     $imageDataUri = "data:{$mime};base64,{$base64}";
@@ -129,19 +132,18 @@ class OrderController extends Controller
                 $customOptions = $itemData;
                 unset($customOptions['item_type'], $customOptions['quantity']);
 
-
                 if ($customTagUrl) {
                     $customOptions['custom_tag_path'] = $customTagUrl;
                 }
 
                 OrderTicketItem::create([
-                    'order_ticket_id' => $ticket->id,
-                    'item_type' => $itemData['item_type'],
-                    'quantity' => $itemData['quantity'],
-                    'image_data' => $imageDataUri, // Saved directly in DB
-                    'r2_url' => null,
+                    'order_ticket_id'      => $ticket->id,
+                    'item_type'            => $itemData['item_type'],
+                    'quantity'             => $itemData['quantity'],
+                    'image_data'            => $imageDataUri,
+                    'r2_url'               => null,
                     'reference_image_path' => null,
-                    'custom_options' => $customOptions,
+                    'custom_options'       => $customOptions,
                 ]);
             }
 
@@ -160,8 +162,8 @@ class OrderController extends Controller
         $qrData = $qrService->generateTicketQr($orderTicket->id, $orderTicket->qr_token ?? $orderTicket->id);
 
         return view('tickets.show', [
-            'ticket' => $orderTicket,
-            'qrData' => $qrData,
+            'ticket'           => $orderTicket,
+            'qrData'           => $qrData,
             'isDashboardView' => request()->routeIs('dashboard.*') || request()->has('from_dashboard'),
         ]);
     }
@@ -193,7 +195,7 @@ class OrderController extends Controller
 
     private function calculateHaversineDistance($lat1, $lon1, $lat2, $lon2): float
     {
-        $earthRadius = 6371; // radius in km
+        $earthRadius = 6371;
         $dLat = deg2rad($lat2 - $lat1);
         $dLon = deg2rad($lon2 - $lon1);
 

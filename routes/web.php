@@ -55,7 +55,7 @@ Route::get('/email/verify/{id}/{hash}', function (EmailVerificationRequest $requ
     return redirect()->route('orders.index');
 })->middleware(['auth', 'signed'])->name('verification.verify');
 
-// Customer Routes
+// Customer Base Routes
 Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', function () {
         return view('user.dashboard');
@@ -74,19 +74,6 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::get('/challenge', [ChallengeController::class, 'notice'])->name('challenge.notice');
     Route::post('/challenge/verify', [ChallengeController::class, 'verify'])->name('challenge.verify');
     Route::post('/challenge/resend', [ChallengeController::class, 'resend'])->name('challenge.resend');
-
-    Route::group(['middleware' => function (Request $request, $next) {
-        if ($request->session()->has('requires_challenge')) {
-            return redirect()->route('challenge.notice');
-        }
-
-        return $next($request);
-    }], function () {
-        Route::get('/dashboard', function () {
-            return view('user.dashboard');
-        })->name('dashboard');
-        Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
-    });
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {

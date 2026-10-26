@@ -3,7 +3,25 @@
 @section('title', 'Ticket #' . $ticket->id)
 
 @push('styles')
-    <link rel="stylesheet" href="{{ asset('css/tickets-show.css') }}">
+    <link rel="preload" href="{{ asset('css/tickets-show.css') }}" as="style">
+    <link rel="stylesheet" href="{{ asset('css/tickets-show.css') }}" media="print" onload="this.media='all'">
+@endpush
+
+@push('scripts')
+    <!-- Register Service Worker for offline capability -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('{{ asset('sw.js') }}')
+                    .then(registration => {
+                        console.log('SW registered:', registration.scope);
+                    })
+                    .catch(error => {
+                        console.log('SW registration failed:', error);
+                    });
+            });
+        }
+    </script>
 @endpush
 
 @section('content')
@@ -17,7 +35,11 @@
     </div>
 
     <div class="notice-banner">
-        <div style="font-size: 1.3rem; line-height: 1;">💬</div>
+        <div style="font-size: 1.3rem; line-height: 1;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 24px; height: 24px;">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+            </svg>
+        </div>
         <div class="notice-content">
             <strong>Inquiry Received!</strong>
             @if($ticket->preferred_notification_channel === 'messenger')
@@ -81,9 +103,15 @@
                             </svg>
 
                             <div class="polaroid-img-box">
-                                <img src="{{ $pinnedPreviewImage }}" alt="Ref Image" class="polaroid-img" />
+                                <img src="{{ $pinnedPreviewImage }}" alt="Ref Image" class="polaroid-img"  />
                             </div>
-                            <div class="polaroid-caption">📌 Ref Image</div>
+                            <div class="polaroid-caption">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 4px;">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                <circle cx="12" cy="10" r="3"></circle>
+            </svg>
+            Ref Image
+        </div>
                         </div>
                     </div>
                 @endif
@@ -108,7 +136,11 @@
 
                     <strong style="font-family: 'Recoleta-Bold', serif;">Pickup Branch:</strong>
                     <span style="color: #8a38f5; font-weight: bold;">
-                        📍 {{ $ticket->pickup_branch === 'san_jose' ? 'San Jose Branch' : 'Main Shop' }}
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 4px;">
+                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                            <circle cx="12" cy="10" r="3"></circle>
+                        </svg>
+                        {{ $ticket->pickup_branch === 'san_jose' ? 'San Jose Branch' : 'Main Shop' }}
                         @if($ticket->calculated_distance_km)
                             <small style="color: #64748b; font-weight: normal;">({{ $ticket->calculated_distance_km }} km away)</small>
                         @endif
@@ -150,13 +182,21 @@
                 @if(isset($isDashboardView) && $isDashboardView && in_array(strtolower($ticket->status), ['pending staff review', 'pending']))
                     <div style="display: flex; gap: 10px; margin-top: 14px; padding-top: 10px; border-top: 1px dashed #e2e8f0;">
                         <a href="{{ route('orders.edit', $ticket->id) }}" style="flex: 1; text-align: center; background: #f3e8ff; color: #7e22ce; padding: 8px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 0.825rem;">
-                            ✏️ Edit Inquiry
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 4px;">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                        </svg>
+                        Edit Inquiry
                         </a>
                         <form action="{{ route('orders.destroy', $ticket->id) }}" method="POST" style="flex: 1;" onsubmit="return confirm('Are you sure you want to cancel and delete this order inquiry?');">
                             @csrf
                             @method('DELETE')
                             <button type="submit" style="width: 100%; background: #fef2f2; color: #dc2626; border: 1px solid #fca5a5; padding: 8px; border-radius: 6px; font-weight: bold; font-size: 0.825rem; cursor: pointer;">
-                                🗑️ Delete Ticket
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 4px;">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        </svg>
+                        Delete Ticket
                             </button>
                         </form>
                     </div>
@@ -205,7 +245,14 @@
                     </div>
                     @endif
 
-                    <div class="expanded-section-title" style="margin-top: 10px;">🍰 Customization Breakdown</div>
+                    <div class="expanded-section-title" style="margin-top: 10px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px; vertical-align: middle; margin-right: 6px;">
+                <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                <path d="M2 17l10 5 10-5"></path>
+                <path d="M2 12l10 5 10-5"></path>
+            </svg>
+            Customization Breakdown
+        </div>
                     @foreach($ticket->items as $index =>$item)
                         <div style="margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px dashed #cbd5e1;">
                             <strong style="font-size: 0.8rem; color: #1e293b;">Item #{{ $index + 1 }}: {{ ucfirst(str_replace('_', ' ',$item->item_type)) }}</strong>
@@ -261,7 +308,12 @@
 <div id="itemSliderOverlay" class="dark-overlay-modal" onclick="closeSliderOverlay(event)">
     <div class="overlay-card-wrapper" onclick="event.stopPropagation()">
         
-        <button type="button" class="overlay-close-btn" onclick="closeSliderOverlay(null)">✕</button>
+        <button type="button" class="overlay-close-btn" onclick="closeSliderOverlay(null)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width: 20px; height: 20px;">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+        </button>
 
         {{-- TAB NAVIGATION HEADER --}}
         <div class="modal-tabs-header">
@@ -305,10 +357,15 @@
                         <img src="{{ $image }}"
                              alt="{{ $item->item_type }} Reference"
                              style="max-width: 100%; max-height: 100%; object-fit: contain; margin-bottom: 8px;"
-                             onerror="this.style.display='none';" />
+                                                          onerror="this.style.display='none';" />
                     @empty
                         <div style="color: #94a3b8; font-size: 0.85rem; text-align: center; padding: 20px;">
-                            🎂 No Reference Image Attached
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 6px;">
+                            <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                            <path d="M2 17l10 5 10-5"></path>
+                            <path d="M2 12l10 5 10-5"></path>
+                        </svg>
+                        No Reference Image Attached
                         </div>
                     @endforelse
                 </div>
@@ -338,7 +395,11 @@
                     </div>
         
                     <div style="margin-top: 16px; padding: 8px 12px; background: #f8fafc; border-radius: 6px; font-size: 0.75rem; color: #64748b;">
-                        📌 Specifications tied to <strong>Ticket #{{ $ticket->id }}</strong>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 4px;">
+                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                            <circle cx="12" cy="10" r="3"></circle>
+                        </svg>
+                        Specifications tied to <strong>Ticket #{{ $ticket->id }}</strong>
                     </div>
                 </div>
         
