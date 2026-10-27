@@ -8,99 +8,44 @@
     <meta name="user-avatar" content="{{ Auth::check() && !empty(Auth::user()->avatar) ? asset(Auth::user()->avatar) : asset('images/default-avatar.jpeg') }}">
     <meta name="user-frame" content="{{ Auth::check() ? asset('images/frames/' . (Auth::user()->selected_frame ?: 'frame_reg01') . '.png') : '' }}">
     <title>Community | Masaganang Pagpapala</title>
+
+    <!-- Preload critical fonts for faster text rendering -->
+    <link rel="preload" href="{{ asset('fonts/samsungsharpsans-bold.otf') }}" as="font" type="font/otf" crossorigin>
+    <link rel="preload" href="{{ asset('fonts/Recoleta Bold.otf') }}" as="font" type="font/otf" crossorigin>
+    <link rel="preload" href="{{ asset('fonts/Jomhuria-Regular.ttf') }}" as="font" type="font/ttf" crossorigin>
+    <link rel="preload" href="{{ asset('fonts/MangoGrotesque-Regular.otf') }}" as="font" type="font/otf" crossorigin>
+    <link rel="preload" href="{{ asset('Aloevera.ttf') }}" as="font" type="font/ttf" crossorigin>
+
+    <!-- Preload critical CSS -->
+    <link rel="preload" href="{{ asset('css/welcome.css') }}" as="style">
+    <link rel="preload" href="{{ asset('css/loader.css') }}" as="style">
+    <link rel="preload" href="{{ asset('css/dashboard.css') }}" as="style">
+    <link rel="preload" href="{{ asset('css/community.css') }}" as="style">
+
+    <!-- Load CSS with print media trick for non-blocking -->
+    <link rel="stylesheet" href="{{ asset('css/welcome.css') }}" media="print" onload="this.media='all'">
+    <link rel="stylesheet" href="{{ asset('css/loader.css') }}" media="print" onload="this.media='all'">
+    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}" media="print" onload="this.media='all'">
+    <link rel="stylesheet" href="{{ asset('css/community.css') }}" media="print" onload="this.media='all'">
+    <link rel="icon" type="image/x-icon" href="{{ asset('images/logo.png') }}">
+
+    <!-- Google Fonts (Manrope) - Load with display=swap -->
     <link href="https://fonts.googleapis.com/css?family=Manrope:wght@500;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ asset('css/welcome.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/loader.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}">
-    <style>
-        .community-layout {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px 15px 60px;
-            display: grid;
-            grid-template-columns: 240px 1fr 280px;
-            gap: 25px;
-            align-items: start;
+
+    <!-- Register Service Worker for offline capability -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('{{ asset('sw.js') }}')
+                    .then(registration => {
+                        console.log('SW registered:', registration.scope);
+                    })
+                    .catch(error => {
+                        console.log('SW registration failed:', error);
+                    });
+            });
         }
-
-        @media (max-width: 992px) {
-            .community-layout { grid-template-columns: 1fr; }
-            .left-sidebar, .right-sidebar { display: none; }
-        }
-
-        .post-card { background: #FFF; border: 3px solid #000; border-radius: 16px; padding: 20px; box-shadow: 0 6px 0 #000; margin-bottom: 25px; }
-        .section-title { font-family: 'modern-bold', sans-serif; font-size: 18px; color: #000; margin-bottom: 15px; border-bottom: 2px solid #E5E7EB; padding-bottom: 8px;}
-        
-        .filter-btn {
-            display: block; width: 100%; text-align: left; background: #F9FAFB; border: 2px solid #000; border-radius: 12px; padding: 12px 15px;
-            font-family: 'modern-bold', sans-serif; font-size: 15px; color: #374151; margin-bottom: 10px; cursor: pointer; text-decoration: none;
-            transition: transform 0.1s, box-shadow 0.1s; box-shadow: 0 4px 0 #000;
-        }
-        .filter-btn:active { transform: translateY(4px); box-shadow: 0 0 0 #000; }
-        .filter-btn.active { background: #E0E7FF; border-color: #4F46E5; color: #4F46E5; box-shadow: 0 4px 0 #4F46E5; }
-
-        .progress-card { background: #FEF3C7; border: 2px solid #D97706; border-radius: 14px; padding: 15px; margin-bottom: 15px; text-align: center; }
-        
-        .reaction-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 15px; padding-top: 12px; border-top: 2px dashed #E5E7EB; }
-        .reaction-btn {
-            background: #F3F4F6; border: 2px solid #D1D5DB; border-radius: 8px; padding: 4px 10px;
-            font-size: 14px; font-family: 'Manrope', sans-serif; font-weight: 800; cursor: pointer;
-            display: inline-flex; align-items: center; gap: 6px; transition: all 0.15s ease; outline: none;
-        }
-        .reaction-btn:hover { background: #E5E7EB; border-color: #9CA3AF; }
-        .reaction-btn.user-reacted { background: #EDE9FE; border-color: #8A38F5; color: #8A38F5; }
-        
-        @keyframes discordPop {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.25); }
-            100% { transform: scale(1); }
-        }
-        .pop-anim { animation: discordPop 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-
-        .author-container { position: relative; width: 46px; height: 46px; cursor: pointer; flex-shrink: 0; }
-        .author-img { width: 36px; height: 36px; border-radius: 25%; object-fit: cover; position: absolute; top: 5px; left: 5px; z-index: 1; }
-        .author-frame { position: absolute; top: 0; left: 0; width: 46px; height: 46px; z-index: 2; pointer-events: none; object-fit: contain; }
-
-        /* UPGRADED: Modals firmly cover the entire screen and side menu layer */
-        .modal-overlay { 
-            display: none; 
-            position: fixed; 
-            top: 0; 
-            left: 0; 
-            width: 100vw; 
-            height: 100vh; 
-            background: rgba(0,0,0,0.85); 
-            z-index: 100000 !important; 
-            justify-content: center; 
-            align-items: center; 
-        }
-        
-        .profile-pop-box { background: #FFF; border: 4px solid #000; border-radius: 20px; padding: 30px 20px; width: 90%; max-width: 420px; box-shadow: 0 8px 0 #000; text-align: center; }
-        .badge-grid-pop { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 20px 0; max-height: 220px; overflow-y: auto; padding: 5px; }
-        .badge-slot { background: #F9FAFB; border: 2px solid #000; border-radius: 12px; padding: 10px 5px; display: flex; flex-direction: column; align-items: center; }
-        .badge-slot.locked { opacity: 0.35; filter: grayscale(1); }
-
-        .fb-image-grid { display: grid; gap: 4px; border-radius: 12px; overflow: hidden; border: 2px solid #E5E7EB; }
-        .fb-image-grid img { width: 100%; height: 100%; object-fit: cover; display: block; transition: opacity 0.2s; }
-        .fb-image-grid img:hover { opacity: 0.85; }
-        .img-wrapper { position: relative; cursor: pointer; }
-
-        .grid-1 { grid-template-columns: 1fr; }
-        .grid-1 .img-wrapper { max-height: 400px; }
-        .grid-2 { grid-template-columns: 1fr 1fr; height: 250px; }
-        .grid-3 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; height: 350px; }
-        .grid-3 .img-wrapper:first-child { grid-column: 1 / 3; }
-        .grid-4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; height: 350px; }
-
-        .community-header-image {
-          border-radius: 12px;
-          margin: 8px;
-          margin-bottom: 50px;
-          width: 99.5%;
-          height: auto;
-          display: block;
-        }
-    </style>
+    </script>
 </head>
 <body>
     @include('partials.loader')
@@ -116,10 +61,33 @@
             <!-- COLUMN 1: LEFT SIDEBAR (FILTERS) -->
             <aside class="left-sidebar">
                 <h2 class="section-title">Feed Filters</h2>
-                <a href="{{ route('community.index') }}" class="filter-btn {{ $filter === 'all' ? 'active' : '' }}">🌐 Everything</a>
-                <a href="{{ route('community.index', ['filter' => 'announcement']) }}" class="filter-btn {{ $filter === 'announcement' ? 'active' : '' }}">📢 Announcements</a>
-                <a href="{{ route('community.index', ['filter' => 'review']) }}" class="filter-btn {{ $filter === 'review' ? 'active' : '' }}">⭐ Reviews</a>
-                <a href="{{ route('community.index', ['filter' => 'thread']) }}" class="filter-btn {{ $filter === 'thread' ? 'active' : '' }}">💬 Discussions</a>
+                <a href="{{ route('community.index') }}" class="filter-btn {{ $filter === 'all' ? 'active' : '' }}">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 8px;">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="2" y1="12" x2="22" y2="12"></line>
+                        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                    </svg>
+                    Everything
+                </a>
+                <a href="{{ route('community.index', ['filter' => 'announcement']) }}" class="filter-btn {{ $filter === 'announcement' ? 'active' : '' }}">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 8px;">
+                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                        <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                    </svg>
+                    Announcements
+                </a>
+                <a href="{{ route('community.index', ['filter' => 'review']) }}" class="filter-btn {{ $filter === 'review' ? 'active' : '' }}">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 8px;">
+                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                    </svg>
+                    Reviews
+                </a>
+                <a href="{{ route('community.index', ['filter' => 'thread']) }}" class="filter-btn {{ $filter === 'thread' ? 'active' : '' }}">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 8px;">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                    Discussions
+                </a>
             </aside>
 
             <!-- COLUMN 2: MIDDLE (MAIN STREAM) -->
@@ -158,13 +126,20 @@
                         @if($nextOrderBadge)
                             @php $ordersNeeded = $nextOrderBadge->order_requirement - $orderCount; @endphp
                             <div style="margin-top: 10px; font-family: 'Manrope', sans-serif; font-size: 12px; font-weight: 800; color: #92400E;">
-                                🎯 Just <strong>{{ $ordersNeeded }}</strong> more to unlock<br>
-                                <img src="{{ asset($nextOrderBadge->icon_path) }}" style="width: 24px; height: 24px; vertical-align: middle; margin: 4px;"> 
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px;">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <path d="M12 2v20M2 12h20"></path>
+                                </svg>
+                                Just <strong>{{ $ordersNeeded }}</strong> more to unlock<br>
+                                <img src="{{ asset($nextOrderBadge->icon_path) }}" style="width: 24px; height: 24px; vertical-align: middle; margin: 4px;">
                                 {{ $nextOrderBadge->name }}
                             </div>
                         @else
                             <div style="margin-top: 10px; font-family: 'Manrope', sans-serif; font-size: 12px; font-weight: 800; color: #059669;">
-                                👑 You have unlocked all Order Badges!
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px;">
+                                    <path d="M12 2L15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></path>
+                                </svg>
+                                You have unlocked all Order Badges!
                             </div>
                         @endif
                     </div>
@@ -176,13 +151,20 @@
                         @if($nextPostBadge)
                             @php $postsNeeded = $nextPostBadge->req - $postCount; @endphp
                             <div style="margin-top: 10px; font-family: 'Manrope', sans-serif; font-size: 12px; font-weight: 800; color: #3730A3;">
-                                🎯 <strong>{{ $postsNeeded }}</strong> more posts to unlock<br>
-                                <img src="{{ asset($nextPostBadge->badge->icon_path) }}" style="width: 24px; height: 24px; vertical-align: middle; margin: 4px;"> 
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px;">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <path d="M12 2v20M2 12h20"></path>
+                                </svg>
+                                <strong>{{ $postsNeeded }}</strong> more posts to unlock<br>
+                                <img src="{{ asset($nextPostBadge->badge->icon_path) }}" style="width: 24px; height: 24px; vertical-align: middle; margin: 4px;">
                                 {{ $nextPostBadge->badge->name }}
                             </div>
                         @else
                             <div style="margin-top: 10px; font-family: 'Manrope', sans-serif; font-size: 12px; font-weight: 800; color: #059669;">
-                                👑 You are a Community Legend!
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px;">
+                                    <path d="M12 2L15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></path>
+                                </svg>
+                                You are a Community Legend!
                             </div>
                         @endif
                     </div>
@@ -192,7 +174,10 @@
                         <div class="progress-card" style="background: #F0FDF4; border-color: #10B981; text-align: left; padding: 15px;">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                                 <span style="font-family: 'modern-bold', sans-serif; font-size: 14px; color: #047857;">
-                                    🏆 Unshared Badges ({{ $unsharedBadges->count() }})
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 6px;">
+                                        <path d="M12 2L15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></path>
+                                    </svg>
+                                    Unshared Badges ({{ $unsharedBadges->count() }})
                                 </span>
                                 @if($unsharedBadges->count() > 1)
                                     <button onclick="toggleAchievementStack()" id="stackToggleBtn" style="background: #D1FAE5; border: none; color: #047857; font-family: 'modern-bold'; font-size: 11px; padding: 4px 8px; border-radius: 8px; cursor: pointer;">
@@ -211,7 +196,7 @@
                                     @csrf
                                     <input type="hidden" name="type" value="achievement">
                                     <input type="hidden" name="badge_id" value="{{ $topBadge->id }}">
-                                    <input type="hidden" name="content" value="I just unlocked the {{ $topBadge->name }} badge! 🎉">
+                                    <input type="hidden" name="content" value="I just unlocked the {{ $topBadge->name }} badge!">
                                     <button type="submit" style="background: #10B981; color: #FFF; border: none; border-radius: 10px; padding: 8px 12px; font-family: 'modern-bold'; font-size: 12px; cursor: pointer; width: 100%; box-shadow: 0 3px 0 #059669; transition: 0.1s;">
                                         Share to Feed
                                     </button>
@@ -232,7 +217,7 @@
                                                 @csrf
                                                 <input type="hidden" name="type" value="achievement">
                                                 <input type="hidden" name="badge_id" value="{{ $badge->id }}">
-                                                <input type="hidden" name="content" value="I just unlocked the {{ $badge->name }} badge! 🎉">
+                                                <input type="hidden" name="content" value="I just unlocked the {{ $badge->name }} badge!">
                                                 <button type="submit" style="background: #10B981; color: #FFF; border: none; border-radius: 8px; padding: 5px 10px; font-family: 'modern-bold'; font-size: 11px; cursor: pointer;">
                                                     Share
                                                 </button>

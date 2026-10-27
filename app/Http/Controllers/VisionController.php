@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -73,7 +74,7 @@ class VisionController extends Controller
                 'Content-Type' => 'application/json',
             ])
                 ->retry(3, 2000, function ($exception, $request) {
-                    return $exception instanceof \Illuminate\Http\Client\RequestException
+                    return $exception instanceof RequestException
                         && $exception->response->serverError();
                 })
                 ->post('https://api.groq.com/openai/v1/chat/completions', [

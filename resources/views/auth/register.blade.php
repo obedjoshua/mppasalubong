@@ -5,10 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sign Up | Masaganang Pagpapala Pasalubong</title>
     <link rel="icon" type="image/x-icon" href="{{ asset('images/logo.png') }}">
-    
+
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ asset('css/login.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/loader.css') }}">
+    <link rel="preload" href="{{ asset('css/login.css') }}" as="style">
+    <link rel="preload" href="{{ asset('css/loader.css') }}" as="style">
+    <link rel="stylesheet" href="{{ asset('css/login.css') }}" media="print" onload="this.media='all'">
+    <link rel="stylesheet" href="{{ asset('css/loader.css') }}" media="print" onload="this.media='all'">
+
+    <!-- Register Service Worker for offline capability -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('{{ asset('sw.js') }}')
+                    .then(registration => {
+                        console.log('SW registered:', registration.scope);
+                    })
+                    .catch(error => {
+                        console.log('SW registration failed:', error);
+                    });
+            });
+        }
+    </script>
 
     <style>
         .login-prompt-btn {
@@ -41,13 +58,13 @@
 
     <div class="login-wrapper">
         <div class="illustration-side">
-            <img src="{{ asset('images/v600_2.png') }}" alt="Mascots and Logo Structure" class="mascot-img">
+            <img src="{{ asset('images/v600_2.png') }}" alt="Mascots and Logo Structure" class="mascot-img" >
         </div>
 
         <div class="form-side">
             <div class="form-container">
                 <div class="brand-header">
-                    <img src="{{ asset('images/logo.png') }}" alt="Logo" class="brand-icon">
+                    <img src="{{ asset('images/logo.png') }}" alt="Logo" class="brand-icon" >
                     <div class="brand-text">
                         <span>MASAGANANG</span>
                         <span>PAGPAPALA</span>

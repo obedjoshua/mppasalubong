@@ -4,12 +4,75 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@yield('title', 'Masaganang Pagpapala Pasalubong')</title>
-    
-    <link rel="stylesheet" href="{{ asset('css/welcome.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/loader.css') }}">
-    <link rel="icon" type="image/x-icon" href="{{ asset('images/logo.png') }}">
-    
+
+    <!-- Preload critical fonts for faster text rendering -->
+    <link rel="preload" href="{{ asset('fonts/samsungsharpsans-bold.otf') }}" as="font" type="font/otf" crossorigin>
+    <link rel="preload" href="{{ asset('fonts/Recoleta Bold.otf') }}" as="font" type="font/otf" crossorigin>
+    <link rel="preload" href="{{ asset('fonts/Jomhuria-Regular.ttf') }}" as="font" type="font/ttf" crossorigin>
+    <link rel="preload" href="{{ asset('fonts/MangoGrotesque-Regular.otf') }}" as="font" type="font/otf" crossorigin>
+    <link rel="preload" href="{{ asset('Aloevera.ttf') }}" as="font" type="font/ttf" crossorigin>
+
+    <!-- Preload critical CSS -->
+    <link rel="preload" href="{{ asset('css/welcome.css') }}" as="style">
+    <link rel="preload" href="{{ asset('css/loader.css') }}" as="style">
+
+    <!-- Load CSS with print media trick for non-blocking -->
+    <link rel="stylesheet" href="{{ asset('css/welcome.css') }}" media="print" onload="this.media='all'">
+    <link rel="stylesheet" href="{{ asset('css/loader.css') }}" media="print" onload="this.media='all'">
+    <link rel="icon" type="image/x-icon" href="{{ asset('images/logo.png') }}">    
+    {{-- Inline critical loader CSS to prevent flash of unstyled loader --}}
+    <style>
+        .loader-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: #FFFFFF;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.6s ease, visibility 0.6s ease;
+        }
+        .svg-wrapper {
+            width: min(80vw, 400px);
+            height: auto;
+        }
+        .drawing-svg {
+            width: 100%;
+            height: auto;
+        }
+        .drawing-svg path {
+            stroke-dasharray: 3500;
+            stroke-dashoffset: 3500;
+            animation: drawPath 2.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+        @keyframes drawPath {
+            0% { stroke-dashoffset: 3500; fill: transparent; }
+            70% { stroke-dashoffset: 0; fill: transparent; }
+            100% { stroke-dashoffset: 0; fill: #610DCF; }
+        }
+        .loader-container.fade-out { opacity: 0; visibility: hidden; }
+    </style>
+
+
     @stack('styles')
+
+    <!-- Register Service Worker for offline capability -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('{{ asset('sw.js') }}')
+                    .then(registration => {
+                        console.log('SW registered:', registration.scope);
+                    })
+                    .catch(error => {
+                        console.log('SW registration failed:', error);
+                    });
+            });
+        }
+    </script>
 </head>
 <body>
     @include('partials.loader')

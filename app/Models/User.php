@@ -6,6 +6,7 @@ use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -130,7 +131,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
     // --- New Community & Shop Relationships ---
 
-    public function badges(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    public function badges(): BelongsToMany
     {
         return $this->belongsToMany(Badge::class, 'user_badge')->withPivot('unlocked_at');
     }

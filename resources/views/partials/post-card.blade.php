@@ -26,24 +26,54 @@
         
         <!-- Post Options -->
         <div class="post-options-container" style="position: absolute; top: 15px; right: 15px; z-index: 5;">
-            <button type="button" onclick="toggleMenu('{{ $post->id }}')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #9CA3AF; padding: 0 5px;">⋮</button>
+            <button type="button" onclick="toggleMenu('{{ $post->id }}')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #9CA3AF; padding: 0 5px;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 20px; height: 20px;">
+                    <circle cx="12" cy="12" r="1"></circle>
+                    <circle cx="19" cy="12" r="1"></circle>
+                    <circle cx="5" cy="12" r="1"></circle>
+                </svg>
+            </button>
 
             <div id="menu-{{ $post->id }}" class="post-menu-dropdown" style="display: none; position: absolute; right: 0; top: 25px; background: #FFF; border: 2px solid #E5E7EB; border-radius: 12px; box-shadow: 0 10px 15px rgba(0,0,0,0.1); overflow: hidden; z-index: 10; width: 130px;">
                 @if($isAuthorOrAdmin)
-                    <a href="{{ route('community.post.edit', $post->id) }}" style="display: block; padding: 10px 15px; color: #374151; text-decoration: none; font-family: 'modern-bold'; font-size: 13px; border-bottom: 1px solid #F3F4F6;">✏️ Edit</a>
+                    <a href="{{ route('community.post.edit', $post->id) }}" style="display: block; padding: 10px 15px; color: #374151; text-decoration: none; font-family: 'modern-bold'; font-size: 13px; border-bottom: 1px solid #F3F4F6;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 6px;">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                </svg>
+                Edit
+            </a>
                     <form action="{{ route('community.post.destroy', $post->id) }}" method="POST" onsubmit="return confirm('Delete this post?');">
                         @csrf 
                         @method('DELETE')
-                        <button type="submit" style="width: 100%; text-align: left; background: none; border: none; padding: 10px 15px; color: #EF4444; font-family: 'modern-bold'; font-size: 13px; cursor: pointer;">🗑️ Delete</button>
+                        <button type="submit" style="width: 100%; text-align: left; background: none; border: none; padding: 10px 15px; color: #EF4444; font-family: 'modern-bold'; font-size: 13px; cursor: pointer;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 6px;">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                </svg>
+                Delete
+            </button>
                     </form>
                 @else
                     @auth
                         <form action="{{ route('community.post.report', $post->id) }}" method="POST" onsubmit="return confirm('Report this post?');">
                             @csrf
-                            <button type="submit" style="width: 100%; text-align: left; background: none; border: none; padding: 10px 15px; color: #EF4444; font-family: 'modern-bold'; font-size: 13px; cursor: pointer;">🚩 Report Post</button>
+                            <button type="submit" style="width: 100%; text-align: left; background: none; border: none; padding: 10px 15px; color: #EF4444; font-family: 'modern-bold'; font-size: 13px; cursor: pointer;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 6px;">
+                    <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path>
+                    <line x1="4" y1="22" x2="4" y2="15"></line>
+                </svg>
+                Report Post
+            </button>
                         </form>
                     @else
-                        <a href="{{ route('login') }}" style="display: block; padding: 10px 15px; color: #EF4444; text-decoration: none; font-family: 'modern-bold'; font-size: 13px;">🚩 Report Post</a>
+                        <a href="{{ route('login') }}" style="display: block; padding: 10px 15px; color: #EF4444; text-decoration: none; font-family: 'modern-bold'; font-size: 13px;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 6px;">
+                    <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path>
+                    <line x1="4" y1="22" x2="4" y2="15"></line>
+                </svg>
+                Report Post
+            </a>
                     @endauth
                 @endif
             </div>
@@ -73,7 +103,11 @@
                 @if($post->badge)
                     <img src="{{ asset($post->badge->icon_path) }}" style="width: 100px; height: 100px; object-fit: contain; filter: drop-shadow(0px 8px 12px rgba(245,158,11,0.3));">
                 @else
-                    <div style="width: 100px; height: 100px; background: #FEF3C7; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 40px;">🏆</div>
+                    <div style="width: 100px; height: 100px; background: #FEF3C7; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                <svg viewBox="0 0 24 24" fill="currentColor" style="width: 40px; height: 40px; color: #F59E0B;">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                </svg>
+            </div>
                 @endif
             </div>
         </div>
@@ -81,17 +115,30 @@
         <!-- Footer -->
         <div style="display: flex; justify-content: space-between; align-items: center; border-top: 2px solid #F3F4F6; padding-top: 15px;">
             <button class="js-reaction-btn" data-post-id="{{ $post->id }}" data-emoji="🎉" style="background: #FFF; border: 2px solid #E5E7EB; border-radius: 12px; padding: 10px 16px; font-family: 'modern-bold', sans-serif; font-size: 13px; color: #4B5563; cursor: pointer; display: flex; gap: 8px; align-items: center; transition: 0.1s;">
-                <span style="font-size: 16px;">🎉</span> CELEBRATE
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px;">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+                CELEBRATE
             </button>
 
-            @php $totalReactions = $post->reactions->count(); @endphp
+            @php
+                $totalReactions = $post->reactions->count();
+                $reactionEmojis = [
+                    '🍰' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;"><path d="M12 2L2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><path d="M2 12l10 5 10-5"></path></svg>',
+                    '🔥' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3.5 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></svg>',
+                    '😍' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>',
+                    '🎂' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;"><path d="M12 2L2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><path d="M2 12l10 5 10-5"></path></svg>',
+                    '🎉' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>',
+                ];
+            @endphp
             @if($totalReactions > 0)
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <div style="display: flex; flex-direction: row-reverse;">
                         <?php $zCount = 1; ?>
                         @foreach($post->reactions->unique('emoji')->take(3) as $reaction)
                             <div style="width: 28px; height: 28px; background: #FFF; border: 2px solid #E5E7EB; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 14px; margin-left: -10px; z-index: <?php echo $zCount++; ?>;">
-                                {{ $reaction->emoji }}
+                                {!! $reactionEmojis[$reaction->emoji] ?? $reaction->emoji !!}
                             </div>
                         @endforeach
                     </div>
@@ -106,28 +153,62 @@
     <div class="post-card {{ $cardClass }}" id="post-{{ $post->id }}" style="position: relative; border-radius: 16px; margin-bottom: 25px;">
         @if($post->is_pinned)
             <div style="position: absolute; top: -12px; right: 50px; background: #EF4444; color: white; padding: 4px 12px; border-radius: 12px; font-family: 'modern-bold'; font-size: 12px; border: 2px solid #000;">
-                📌 PINNED
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 12px; height: 12px; vertical-align: middle; margin-right: 4px;">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                <circle cx="12" cy="10" r="3"></circle>
+            </svg>
+            PINNED
             </div>
         @endif 
 
         <div class="post-options-container" style="position: absolute; top: 15px; right: 15px; z-index: 5;">
-            <button type="button" onclick="toggleMenu('{{ $post->id }}')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #6B7280; padding: 0 5px;">⋮</button>
+            <button type="button" onclick="toggleMenu('{{ $post->id }}')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #6B7280; padding: 0 5px;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 20px; height: 20px;">
+                    <circle cx="12" cy="12" r="1"></circle>
+                    <circle cx="19" cy="12" r="1"></circle>
+                    <circle cx="5" cy="12" r="1"></circle>
+                </svg>
+            </button>
             <div id="menu-{{ $post->id }}" class="post-menu-dropdown" style="display: none; position: absolute; right: 0; top: 25px; background: #FFF; border: 2px solid #E5E7EB; border-radius: 12px; box-shadow: 0 10px 15px rgba(0,0,0,0.1); overflow: hidden; z-index: 10; width: 130px;">
                 @if($isAuthorOrAdmin)
-                    <a href="{{ route('community.post.edit', $post->id) }}" style="display: block; padding: 10px 15px; color: #374151; text-decoration: none; font-family: 'modern-bold'; font-size: 13px; border-bottom: 1px solid #F3F4F6;">✏️ Edit</a>
+                    <a href="{{ route('community.post.edit', $post->id) }}" style="display: block; padding: 10px 15px; color: #374151; text-decoration: none; font-family: 'modern-bold'; font-size: 13px; border-bottom: 1px solid #F3F4F6;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 6px;">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                </svg>
+                Edit
+            </a>
                     <form action="{{ route('community.post.destroy', $post->id) }}" method="POST" onsubmit="return confirm('Delete this post?');">
                         @csrf 
                         @method('DELETE')
-                        <button type="submit" style="width: 100%; text-align: left; background: none; border: none; padding: 10px 15px; color: #EF4444; font-family: 'modern-bold'; font-size: 13px; cursor: pointer;">🗑️ Delete</button>
+                        <button type="submit" style="width: 100%; text-align: left; background: none; border: none; padding: 10px 15px; color: #EF4444; font-family: 'modern-bold'; font-size: 13px; cursor: pointer;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 6px;">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                </svg>
+                Delete
+            </button>
                     </form>
                 @else
                     @auth
                         <form action="{{ route('community.post.report', $post->id) }}" method="POST" onsubmit="return confirm('Report this post?');">
                             @csrf
-                            <button type="submit" style="width: 100%; text-align: left; background: none; border: none; padding: 10px 15px; color: #EF4444; font-family: 'modern-bold'; font-size: 13px; cursor: pointer;">🚩 Report Post</button>
+                            <button type="submit" style="width: 100%; text-align: left; background: none; border: none; padding: 10px 15px; color: #EF4444; font-family: 'modern-bold'; font-size: 13px; cursor: pointer;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 6px;">
+                    <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path>
+                    <line x1="4" y1="22" x2="4" y2="15"></line>
+                </svg>
+                Report Post
+            </button>
                         </form>
                     @else
-                        <a href="{{ route('login') }}" style="display: block; padding: 10px 15px; color: #EF4444; text-decoration: none; font-family: 'modern-bold'; font-size: 13px;">🚩 Report Post</a>
+                        <a href="{{ route('login') }}" style="display: block; padding: 10px 15px; color: #EF4444; text-decoration: none; font-family: 'modern-bold'; font-size: 13px;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 6px;">
+                    <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path>
+                    <line x1="4" y1="22" x2="4" y2="15"></line>
+                </svg>
+                Report Post
+            </a>
                     @endauth
                 @endif
             </div>
@@ -200,13 +281,21 @@
 
         <!-- 3. Reactions -->
         <div class="reaction-row">
+            @php
+                $reactionEmojis = [
+                    '🍰' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px;"><path d="M12 2L2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><path d="M2 12l10 5 10-5"></path></svg>',
+                    '🔥' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px;"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3.5 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></svg>',
+                    '😍' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px;"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>',
+                    '🎂' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px;"><path d="M12 2L2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><path d="M2 12l10 5 10-5"></path></svg>',
+                ];
+            @endphp
             @foreach(['🍰', '🔥', '😍', '🎂'] as $emoji)
                 @php
                     $emojiCount = $post->reactions->where('emoji', $emoji)->count();
                     $userReacted = Auth::check() && $post->reactions->where('emoji', $emoji)->where('user_id', Auth::id())->isNotEmpty();
                 @endphp
                 <button class="reaction-btn {{ $userReacted ? 'user-reacted' : '' }} js-reaction-btn" data-post-id="{{ $post->id }}" data-emoji="{{ $emoji }}">
-                    <span>{{ $emoji }}</span> 
+                    {!! $reactionEmojis[$emoji] !!}
                     <span class="js-reaction-count">{{ $emojiCount }}</span>
                 </button>
             @endforeach
@@ -274,7 +363,12 @@
                                         id="toggle-replies-btn-{{ $comment->id }}"
                                         onclick="toggleReplies('{{ $post->id }}', '{{ $comment->id }}', '{{ addslashes($postAuthor->name) }}')"
                                         style="background: none; border: none; color: #65676B; font-family: 'modern-bold', sans-serif; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 4px; padding: 4px 0;">
-                                    <span id="toggle-icon-{{ $comment->id }}">↪</span> 
+                                    <span id="toggle-icon-{{ $comment->id }}">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
+                                        <path d="M13 9l6 6-6 6"></path>
+                                        <path d="M19 9v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5"></path>
+                                    </svg>
+                                </span> 
                                     <span id="toggle-text-{{ $comment->id }}">View {{ $comment->replies->count() }} {{ Str::plural('reply', $comment->replies->count()) }}</span>
                                 </button>
 
@@ -363,7 +457,10 @@
                                required 
                                style="width: 100%; padding: 10px 45px 10px 15px; border: 2px solid #D1D5DB; border-radius: 20px; font-family: 'Manrope'; font-size: 13px; outline: none; box-sizing: border-box; background: #F9FAFB;">
                         <button type="submit" style="position: absolute; right: 5px; top: 50%; transform: translateY(-50%); background: #8A38F5; color: white; border: none; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 12px;">
-                            ➔
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px;">
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                                <polyline points="12 5 19 12 12 19"></polyline>
+                            </svg>
                         </button>
                     </div>
                 </div>

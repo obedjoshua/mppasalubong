@@ -1,13 +1,8 @@
-* {
-    margin: 0;
-    padding: 0;
+.loader-container,
+.loader-container *,
+.loader-container *::before,
+.loader-container *::after {
     box-sizing: border-box;
-}
-
-body, html {
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
 }
 
 /* Fullscreen Loader Overlay */
@@ -26,18 +21,18 @@ body, html {
 }
 
 /* Centers and scales the SVG nicely */
-.svg-wrapper {
+.loader-container .svg-wrapper {
     width: min(80vw, 400px);
     height: auto;
 }
 
-.drawing-svg {
+.loader-container .drawing-svg {
     width: 100%;
     height: auto;
 }
 
 /* Drawing Style Animation Logic */
-.drawing-svg path {
+.loader-container .drawing-svg path {
     /* 3500px is roughly the total length of your complex path outline */
     stroke-dasharray: 3500;
     stroke-dashoffset: 3500;

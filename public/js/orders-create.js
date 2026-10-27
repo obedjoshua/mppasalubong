@@ -1,7 +1,8 @@
-/**
- * Masaganang Pagpapala - Custom Order Ticket Engine
- * Ultra-Fast, Offline-First with Canvas Compression & IndexedDB Queueing
+﻿/**
+ * Custom Order Ticket Engine - Draft Caching, Route Drawing & CSRF Handling
  */
+
+const DRAFT_STORAGE_KEY = 'mpp_custom_order_draft';
 
 let currentStep = 1;
 let itemIndex = 0;
@@ -12,15 +13,21 @@ const visionRoute = document.querySelector('meta[name="vision-route"]')?.getAttr
 
 window.closedDates = window.closedDates || [];
 
-// OpenFreeMap / MapLibre GL Instances
-let map;
-let userMarker;
-let mainShopMarker;
-let sanJoseShopMarker;
-
-// Store Coordinates
-const MAIN_SHOP_COORDS = { lat: 15.186235193924075, lng: 120.95964131143174 };
-const SAN_JOSE_COORDS = { lat: 15.147108923134585, lng: 120.97994960855327 };
+// Store Coordinates in San Miguel, Bulacan
+const BRANCHES = {
+    main_shop: {
+        name: 'Main Branch',
+        lat: 15.18621455604317, 
+        lng: 120.95963746397479,
+        address: 'Poblacion, San Miguel, Bulacan'
+    },
+    san_jose: {
+        name: 'San Jose Branch',
+        lat: 15.147078060587376,
+        lng: 120.97994589846843,
+        address: 'Norberto St., San Jose, San Miguel'
+    }
+};
 
 let selectedDateVal = null;
 let currCalDate = new Date();
@@ -30,17 +37,31 @@ let selMin = "00";
 let selAmpm = "AM";
 let currentClockMode = 'hour';
 
-// IndexedDB Offline Queueing
 let dbInstance = null;
+let map = null;
+let userMarker = null;
+let branchMarkers = {};
+let selectedBranch = 'main_shop';
 
 document.addEventListener("DOMContentLoaded", () => {
+    // If returning after successful ticket creation, clear the cached draft
+    if (document.referrer.includes('/orders/ticket')) {
+        clearFormDraft();
+    } else {
+        restoreFormDraft();
+    }
+
     initIndexedDB();
     initZoomModal();
-    initOpenFreeMap();
     setupNetworkSyncListeners();
+    initMapLibre();
 
     const ticketForm = document.getElementById('ticketForm');
     if (ticketForm) {
+        // Debounced auto-save on user input/changes
+        ticketForm.addEventListener('input', debounce(saveFormDraft, 400));
+        ticketForm.addEventListener('change', debounce(saveFormDraft, 400));
+
         ticketForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             document.querySelectorAll('.input-error-highlight').forEach(el => el.classList.remove('input-error-highlight'));
@@ -48,14 +69,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
             let firstErrorElement = null;
 
-            // Validate Customer Location
+            // Validate Customer Location Address
             const locationInput = document.getElementById('customerLocationInput');
             if (!locationInput || !locationInput.value.trim()) {
                 goToStep(1);
                 locationInput.classList.add('input-error-highlight');
                 const err = document.createElement('span');
                 err.className = 'inline-field-error';
-                err.innerText = '⚠️ Please enter or select your location on the map.';
+                err.innerText = '⚠️ Please enter your location or click Use Current Location.';
                 locationInput.parentElement.appendChild(err);
                 firstErrorElement = locationInput;
             }
@@ -87,7 +108,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 return;
             }
 
-            // Submit via Network or Queue to Offline Storage
+            // Clear draft cache before submitting
+            clearFormDraft();
+
             if (!navigator.onLine) {
                 await queueOrderOffline(new FormData(ticketForm));
             } else {
@@ -134,10 +157,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const btnLoaf = document.getElementById('btnAddLoaf');
     const btnRound = document.getElementById('btnAddRound');
 
-    if (btnCake) btnCake.onclick = () => addItemCard('custom_cake');
-    if (btnCup) btnCup.onclick = () => addItemCard('cupcakes');
-    if (btnLoaf) btnLoaf.onclick = () => addItemCard('giveaway_loaf');
-    if (btnRound) btnRound.onclick = () => addItemCard('giveaway_round');
+    if (btnCake) btnCake.onclick = () => { addItemCard('custom_cake'); saveFormDraft(); };
+    if (btnCup) btnCup.onclick = () => { addItemCard('cupcakes'); saveFormDraft(); };
+    if (btnLoaf) btnLoaf.onclick = () => { addItemCard('giveaway_loaf'); saveFormDraft(); };
+    if (btnRound) btnRound.onclick = () => { addItemCard('giveaway_round'); saveFormDraft(); };
 
     renderCalendar();
     renderTimeSelectors();
@@ -151,6 +174,387 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 });
+
+// =========================================================================
+// FORM AUTO-SAVE & LOCALSTORAGE DRAFT CACHING
+// =========================================================================
+function saveFormDraft() {
+    const ticketForm = document.getElementById('ticketForm');
+    if (!ticketForm) return;
+
+    const itemsData = [];
+    document.querySelectorAll('.duo-3d-card').forEach((card) => {
+        const itemType = card.querySelector('input[name*="[item_type]"]')?.value;
+        if (itemType) {
+            itemsData.push({ type: itemType });
+        }
+    });
+
+    const formData = new FormData(ticketForm);
+    const draft = {
+        currentStep: currentStep,
+        selectedBranch: selectedBranch,
+        selectedDateVal: selectedDateVal,
+        selHour: selHour,
+        selMin: selMin,
+        selAmpm: selAmpm,
+        itemsData: itemsData,
+        fields: {}
+    };
+
+    for (let [key, val] of formData.entries()) {
+        if (!(val instanceof File) && key !== '_token') {
+            draft.fields[key] = val;
+        }
+    }
+
+    localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
+}
+
+function restoreFormDraft() {
+    const saved = localStorage.getItem(DRAFT_STORAGE_KEY);
+    if (!saved) return;
+
+    try {
+        const draft = JSON.parse(saved);
+        if (!draft) return;
+
+        // Restore Items Stack
+        if (draft.itemsData && draft.itemsData.length > 0) {
+            const container = document.getElementById('itemsContainer');
+            if (container) container.textContent = '';
+            itemIndex = 0;
+            draft.itemsData.forEach(item => addItemCard(item.type));
+        }
+
+        // Restore Text/Radio/Checkbox Inputs
+        if (draft.fields) {
+            Object.keys(draft.fields).forEach(key => {
+                const input = document.querySelector(`[name="${key}"]`);
+                if (input && input.type !== 'file' && input.name !== '_token') {
+                    if (input.type === 'checkbox' || input.type === 'radio') {
+                        input.checked = input.value === draft.fields[key];
+                    } else {
+                        input.value = draft.fields[key];
+                    }
+                }
+            });
+        }
+
+        // Restore Map Pin Coordinates & Address Text
+        if (draft.fields && draft.fields['customer_lat'] && draft.fields['customer_lng']) {
+            const lat = parseFloat(draft.fields['customer_lat']);
+            const lng = parseFloat(draft.fields['customer_lng']);
+            const address = draft.fields['customer_address'] || '';
+            setLocationData(lat, lng, address);
+        }
+
+        if (draft.selectedBranch) {
+            selectShop(draft.selectedBranch, false);
+        }
+
+        // Restore Pickup Date & Time
+        if (draft.selectedDateVal) {
+            selectedDateVal = draft.selectedDateVal;
+            const hiddenDate = document.getElementById('hiddenDate');
+            const dateTriggerText = document.getElementById('dateTriggerText');
+            if (hiddenDate) hiddenDate.value = selectedDateVal;
+            if (dateTriggerText) dateTriggerText.textContent = selectedDateVal;
+            renderCalendar();
+        }
+
+        if (draft.selHour && draft.selMin && draft.selAmpm) {
+            selHour = draft.selHour;
+            selMin = draft.selMin;
+            selAmpm = draft.selAmpm;
+            updateTimeDisplay();
+        }
+
+        // Restore Wizard Step
+        if (draft.currentStep) {
+            goToStep(draft.currentStep);
+        }
+    } catch (e) {
+        console.warn("Could not restore form draft:", e);
+    }
+}
+
+function clearFormDraft() {
+    localStorage.removeItem(DRAFT_STORAGE_KEY);
+}
+
+function debounce(func, wait) {
+    let timeout;
+    return function (...args) {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(this, args), wait);
+    };
+}
+
+// =========================================================================
+// GOOGLE MAPS NAVIGATION ROUTE INTEGRATION
+// =========================================================================
+function openGoogleMapsRoute() {
+    const userLat = parseFloat(document.getElementById('latInput').value) || BRANCHES.main_shop.lat;
+    const userLng = parseFloat(document.getElementById('lngInput').value) || BRANCHES.main_shop.lng;
+    
+    const branch = BRANCHES[selectedBranch] || BRANCHES.main_shop;
+
+    // Direct Google Maps Drive Route URL
+    const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${userLat},${userLng}&destination=${branch.lat},${branch.lng}&travelmode=driving`;
+    
+    window.open(googleMapsUrl, '_blank');
+}
+
+// =========================================================================
+// MAPLIBRE GL OPENFREEMAP & ROUTING ENGINE
+// =========================================================================
+function initMapLibre() {
+    const mapContainer = document.getElementById('openFreeMap');
+    if (!mapContainer || map) return;
+
+    const defaultLat = BRANCHES.main_shop.lat;
+    const defaultLng = BRANCHES.main_shop.lng;
+
+    map = new maplibregl.Map({
+        container: 'openFreeMap',
+        style: 'https://tiles.openfreemap.org/styles/liberty',
+        center: [defaultLng, defaultLat],
+        zoom: 13
+    });
+
+    map.addControl(new maplibregl.NavigationControl(), 'top-right');
+
+    map.on('load', () => {
+        Object.keys(BRANCHES).forEach(key => {
+            const b = BRANCHES[key];
+            const el = document.createElement('div');
+            el.innerHTML = `<div style="background:#8A38F5;color:#fff;padding:6px 12px;border-radius:12px;font-weight:900;font-size:12px;box-shadow:0 4px 10px rgba(0,0,0,0.3);border:2px solid #fff;white-space:nowrap;cursor:pointer;">🏢 ${b.name}</div>`;
+
+            branchMarkers[key] = new maplibregl.Marker({ element: el })
+                .setLngLat([b.lng, b.lat])
+                .addTo(map);
+
+            el.addEventListener('click', () => selectShop(key, false));
+        });
+
+        const userEl = document.createElement('div');
+        userEl.innerHTML = `<div style="background:#3b82f6;color:#fff;padding:6px 12px;border-radius:12px;font-weight:900;font-size:12px;box-shadow:0 4px 10px rgba(0,0,0,0.3);border:2px solid #fff;white-space:nowrap;cursor:grab;">📍 Your Pin</div>`;
+
+        userMarker = new maplibregl.Marker({ element: userEl, draggable: true })
+            .setLngLat([defaultLng, defaultLat])
+            .addTo(map);
+
+        userMarker.on('dragend', () => {
+            const lngLat = userMarker.getLngLat();
+            setLocationData(lngLat.lat, lngLat.lng, null);
+            saveFormDraft();
+        });
+
+        map.on('click', (e) => {
+            userMarker.setLngLat(e.lngLat);
+            setLocationData(e.lngLat.lat, e.lngLat.lng, null);
+            saveFormDraft();
+        });
+
+        map.addSource('route', {
+            type: 'geojson',
+            data: {
+                type: 'Feature',
+                properties: {},
+                geometry: { type: 'LineString', coordinates: [] }
+            }
+        });
+
+        map.addLayer({
+            id: 'route-layer',
+            type: 'line',
+            source: 'route',
+            layout: { 'line-join': 'round', 'line-cap': 'round' },
+            paint: {
+                'line-color': '#8A38F5',
+                'line-width': 5,
+                'line-opacity': 0.85
+            }
+        });
+
+        setLocationData(defaultLat, defaultLng, null);
+    });
+}
+
+function setLocationData(lat, lng, addressText) {
+    const latInput = document.getElementById('latInput');
+    const lngInput = document.getElementById('lngInput');
+    const locInput = document.getElementById('customerLocationInput');
+    const statusTitle = document.getElementById('locStatusTitle');
+    const statusCoords = document.getElementById('locStatusCoords');
+
+    if (latInput) latInput.value = lat;
+    if (lngInput) lngInput.value = lng;
+    if (locInput && addressText) locInput.value = addressText;
+
+    if (statusTitle) statusTitle.textContent = addressText || "Selected Map Location";
+    if (statusCoords) statusCoords.textContent = `Coordinates: ${parseFloat(lat).toFixed(5)}, ${parseFloat(lng).toFixed(5)}`;
+
+    if (userMarker) userMarker.setLngLat([lng, lat]);
+
+    drawRouteToBranch(lat, lng, selectedBranch);
+}
+
+function selectShop(branchKey, panMap = true) {
+    selectedBranch = branchKey;
+    const input = document.getElementById('pickupBranchInput');
+    if (input) input.value = branchKey;
+
+    const cardMain = document.getElementById('shopCard_main');
+    const cardSanJose = document.getElementById('shopCard_sanjose');
+
+    if (branchKey === 'main_shop') {
+        if (cardMain) cardMain.classList.add('active');
+        if (cardSanJose) cardSanJose.classList.remove('active');
+    } else {
+        if (cardSanJose) cardSanJose.classList.add('active');
+        if (cardMain) cardMain.classList.remove('active');
+    }
+
+    const currentLat = parseFloat(document.getElementById('latInput').value) || BRANCHES.main_shop.lat;
+    const currentLng = parseFloat(document.getElementById('lngInput').value) || BRANCHES.main_shop.lng;
+
+    drawRouteToBranch(currentLat, currentLng, branchKey);
+
+    if (panMap && map) {
+        map.flyTo({ center: [BRANCHES[branchKey].lng, BRANCHES[branchKey].lat], zoom: 14 });
+    }
+
+    saveFormDraft();
+}
+
+async function drawRouteToBranch(userLat, userLng, branchKey) {
+    if (!map || !map.getSource('route')) return;
+
+    const branch = BRANCHES[branchKey];
+    const url = `https://router.project-osrm.org/route/v1/driving/${userLng},${userLat};${branch.lng},${branch.lat}?overview=full&geometries=geojson`;
+
+    try {
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data.routes && data.routes.length > 0) {
+            const route = data.routes[0];
+            const distanceKm = (route.distance / 1000).toFixed(2);
+            const durationMin = Math.round(route.duration / 60);
+
+            const tagMain = document.getElementById('distTag_main');
+            const tagSanJose = document.getElementById('distTag_sanjose');
+
+            if (branchKey === 'main_shop' && tagMain) {
+                tagMain.innerHTML = `🚗 Approx. <strong>${distanceKm} km</strong> (${durationMin} mins away)`;
+            } else if (branchKey === 'san_jose' && tagSanJose) {
+                tagSanJose.innerHTML = `🚗 Approx. <strong>${distanceKm} km</strong> (${durationMin} mins away)`;
+            }
+
+            map.getSource('route').setData({
+                type: 'Feature',
+                properties: {},
+                geometry: route.geometry
+            });
+        }
+    } catch (e) {
+        map.getSource('route').setData({
+            type: 'Feature',
+            properties: {},
+            geometry: {
+                type: 'LineString',
+                coordinates: [[userLng, userLat], [branch.lng, branch.lat]]
+            }
+        });
+    }
+}
+
+async function searchAddressNominatim(query) {
+    const popover = document.getElementById('searchResultsPopover');
+    if (!popover) return;
+
+    try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ', Bulacan, Philippines')}&limit=5`);
+        const data = await res.json();
+
+        popover.textContent = '';
+        if (data && data.length > 0) {
+            data.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'search-result-item';
+                div.textContent = item.display_name;
+                div.onclick = () => {
+                    const lat = parseFloat(item.lat);
+                    const lon = parseFloat(item.lon);
+                    setLocationData(lat, lon, item.display_name);
+                    hideSearchPopover();
+                    if (map) map.flyTo({ center: [lon, lat], zoom: 14 });
+                    saveFormDraft();
+                };
+                popover.appendChild(div);
+            });
+            popover.classList.add('is-active');
+        } else {
+            hideSearchPopover();
+        }
+    } catch (err) {
+        hideSearchPopover();
+    }
+}
+
+function hideSearchPopover() {
+    const popover = document.getElementById('searchResultsPopover');
+    if (popover) {
+        popover.classList.remove('is-active');
+        popover.textContent = '';
+    }
+}
+
+function useCurrentLocation() {
+    const btnGeo = document.getElementById('btnUseCurrentLocation');
+    if (!navigator.geolocation) {
+        alert("Geolocation is not supported by your browser.");
+        return;
+    }
+
+    if (btnGeo) {
+        btnGeo.disabled = true;
+        btnGeo.textContent = "🎯 Locating GPS...";
+    }
+
+    navigator.geolocation.getCurrentPosition(
+        async (position) => {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+
+            try {
+                const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`);
+                const data = await res.json();
+                const address = (data && data.display_name) ? data.display_name : `GPS Pin (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
+                setLocationData(lat, lng, address);
+                if (map) map.flyTo({ center: [lng, lat], zoom: 14 });
+            } catch (e) {
+                setLocationData(lat, lng, `GPS Pin (${lat.toFixed(4)}, ${lng.toFixed(4)})`);
+            }
+
+            if (btnGeo) {
+                btnGeo.disabled = false;
+                btnGeo.textContent = "🎯 Use Current Location";
+            }
+            saveFormDraft();
+        },
+        () => {
+            if (btnGeo) {
+                btnGeo.disabled = false;
+                btnGeo.textContent = "🎯 Use Current Location";
+            }
+            alert("Unable to acquire your GPS position. Please search your address manually above.");
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+    );
+}
 
 // =========================================================================
 // INDEXEDDB & OFFLINE QUEUE MANAGEMENT
@@ -193,7 +597,7 @@ async function queueOrderOffline(formData) {
     const store = tx.objectStore("pending_orders");
     store.add({ timestamp: Date.now(), data: serializableData });
 
-    alert("⚡ Network connection lost. Your order ticket has been securely saved offline and will automatically upload once online!");
+    alert("⚡ Network connection lost. Your order ticket has been saved offline and will automatically upload once online!");
     window.location.href = "/orders";
 }
 
@@ -233,13 +637,27 @@ async function submitFormDirectly(form) {
     const btn = document.getElementById('btnSubmitTicket');
     if (btn) {
         btn.disabled = true;
-        btn.innerHTML = '⏳ Submitting Ticket...';
+        btn.innerHTML = '⌛ Submitting Ticket...';
     }
+
+    // Ensure a fresh hidden _token field exists inside the form
+    const metaToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    let csrfInput = form.querySelector('input[name="_token"]');
+    if (!csrfInput && metaToken) {
+        csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = '_token';
+        form.appendChild(csrfInput);
+    }
+    if (csrfInput && metaToken) {
+        csrfInput.value = metaToken;
+    }
+
     form.submit();
 }
 
 // =========================================================================
-// CLIENT-SIDE IMAGE COMPRESSION (CANVAS DISPATCH)
+// CLIENT-SIDE CANVAS IMAGE COMPRESSION
 // =========================================================================
 function compressImageFile(file, maxWidth = 1200, quality = 0.8) {
     return new Promise((resolve) => {
@@ -282,234 +700,10 @@ function compressImageFile(file, maxWidth = 1200, quality = 0.8) {
     });
 }
 
-// =========================================================================
-// MAPLIBRE GL JS / OPENFREEMAP INTEGRATION
-// =========================================================================
-function initOpenFreeMap() {
-    const mapContainer = document.getElementById('openFreeMap');
-    if (!mapContainer) return;
-
-    const defaultCenter = [(MAIN_SHOP_COORDS.lng + SAN_JOSE_COORDS.lng) / 2, (MAIN_SHOP_COORDS.lat + SAN_JOSE_COORDS.lat) / 2];
-
-    map = new maplibregl.Map({
-        container: 'openFreeMap',
-        style: 'https://tiles.openfreemap.org/styles/liberty',
-        center: defaultCenter,
-        zoom: 13
-    });
-
-    map.addControl(new maplibregl.NavigationControl(), 'top-right');
-
-    const elUser = document.createElement('div');
-    elUser.className = 'map-marker-user';
-    elUser.title = 'Drag to your location pin';
-
-    userMarker = new maplibregl.Marker({ element: elUser, draggable: true })
-        .setLngLat(defaultCenter)
-        .addTo(map);
-
-    userMarker.on('dragend', () => {
-        const lngLat = userMarker.getLngLat();
-        updateCoordinates(lngLat.lat, lngLat.lng);
-        reverseGeocodeOpenStreetMap(lngLat.lat, lngLat.lng);
-        calculateNearestBranch(lngLat.lat, lngLat.lng);
-    });
-
-    const elMain = document.createElement('div');
-    elMain.className = 'map-marker-shop';
-    elMain.innerHTML = '🏬';
-    elMain.title = 'Main Branch';
-    mainShopMarker = new maplibregl.Marker({ element: elMain })
-        .setLngLat([MAIN_SHOP_COORDS.lng, MAIN_SHOP_COORDS.lat])
-        .setPopup(new maplibregl.Popup().setHTML('<strong>Main Branch</strong><br>San Miguel, Bulacan'))
-        .addTo(map);
-
-    const elSanJose = document.createElement('div');
-    elSanJose.className = 'map-marker-shop';
-    elSanJose.innerHTML = '🏪';
-    elSanJose.title = 'San Jose Branch';
-    sanJoseShopMarker = new maplibregl.Marker({ element: elSanJose })
-        .setLngLat([SAN_JOSE_COORDS.lng, SAN_JOSE_COORDS.lat])
-        .setPopup(new maplibregl.Popup().setHTML('<strong>San Jose Branch</strong><br>Norberto St., San Jose'))
-        .addTo(map);
-
-    map.on('click', (e) => {
-        const { lng, lat } = e.lngLat;
-        userMarker.setLngLat([lng, lat]);
-        updateCoordinates(lat, lng);
-        reverseGeocodeOpenStreetMap(lat, lng);
-        calculateNearestBranch(lat, lng);
-    });
-
-    updateCoordinates(defaultCenter[1], defaultCenter[0]);
-    calculateNearestBranch(defaultCenter[1], defaultCenter[0]);
-}
-
-function updateCoordinates(lat, lng) {
-    const latInput = document.getElementById('latInput');
-    const lngInput = document.getElementById('lngInput');
-    if (latInput) latInput.value = lat;
-    if (lngInput) lngInput.value = lng;
-}
-
-function calculateDistanceKm(lat1, lon1, lat2, lon2) {
-    const R = 6371;
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-              Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
-}
-
-function calculateNearestBranch(userLat, userLng) {
-    const distMain = calculateDistanceKm(userLat, userLng, MAIN_SHOP_COORDS.lat, MAIN_SHOP_COORDS.lng);
-    const distSanJose = calculateDistanceKm(userLat, userLng, SAN_JOSE_COORDS.lat, SAN_JOSE_COORDS.lng);
-
-    const tagMain = document.getElementById('distTag_main');
-    const tagSanJose = document.getElementById('distTag_sanjose');
-    const badgeMain = document.getElementById('recBadge_main');
-    const badgeSanJose = document.getElementById('recBadge_sanjose');
-
-    if (tagMain) tagMain.textContent = `📍 Approx. ${distMain.toFixed(2)} km from your pin`;
-    if (tagSanJose) tagSanJose.textContent = `📍 Approx. ${distSanJose.toFixed(2)} km from your pin`;
-
-    if (distMain <= distSanJose) {
-        if (badgeMain) badgeMain.classList.remove('hidden-element');
-        if (badgeSanJose) badgeSanJose.classList.add('hidden-element');
-        selectShop('main_shop', false);
-    } else {
-        if (badgeSanJose) badgeSanJose.classList.remove('hidden-element');
-        if (badgeMain) badgeMain.classList.add('hidden-element');
-        selectShop('san_jose', false);
-    }
-}
-
-function selectShop(branchKey, panMap = true) {
-    const input = document.getElementById('pickupBranchInput');
-    if (input) input.value = branchKey;
-
-    const cardMain = document.getElementById('shopCard_main');
-    const cardSanJose = document.getElementById('shopCard_sanjose');
-
-    if (branchKey === 'main_shop') {
-        if (cardMain) cardMain.classList.add('active');
-        if (cardSanJose) cardSanJose.classList.remove('active');
-        if (panMap && map) map.flyTo({ center: [MAIN_SHOP_COORDS.lng, MAIN_SHOP_COORDS.lat], zoom: 16 });
-    } else {
-        if (cardSanJose) cardSanJose.classList.add('active');
-        if (cardMain) cardMain.classList.remove('active');
-        if (panMap && map) map.flyTo({ center: [SAN_JOSE_COORDS.lng, SAN_JOSE_COORDS.lat], zoom: 16 });
-    }
-}
-
-async function searchAddressNominatim(query) {
-    const popover = document.getElementById('searchResultsPopover');
-    if (!popover) return;
-
-    try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ', Bulacan, Philippines')}&limit=5`);
-        const data = await res.json();
-
-        popover.textContent = '';
-        if (data && data.length > 0) {
-            data.forEach(item => {
-                const div = document.createElement('div');
-                div.className = 'search-result-item';
-                div.textContent = item.display_name;
-                div.onclick = () => {
-                    const lat = parseFloat(item.lat);
-                    const lon = parseFloat(item.lon);
-                    
-                    const input = document.getElementById('customerLocationInput');
-                    if (input) input.value = item.display_name;
-
-                    if (map && userMarker) {
-                        map.flyTo({ center: [lon, lat], zoom: 16 });
-                        userMarker.setLngLat([lon, lat]);
-                    }
-
-                    updateCoordinates(lat, lon);
-                    calculateNearestBranch(lat, lon);
-                    hideSearchPopover();
-                };
-                popover.appendChild(div);
-            });
-            popover.classList.add('is-active');
-        } else {
-            hideSearchPopover();
-        }
-    } catch (err) {
-        hideSearchPopover();
-    }
-}
-
-function hideSearchPopover() {
-    const popover = document.getElementById('searchResultsPopover');
-    if (popover) {
-        popover.classList.remove('is-active');
-        popover.textContent = '';
-    }
-}
-
-async function reverseGeocodeOpenStreetMap(lat, lng) {
-    try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`);
-        const data = await res.json();
-        const input = document.getElementById('customerLocationInput');
-        if (input && data && data.display_name) {
-            input.value = data.display_name;
-        }
-    } catch (e) {
-        console.error("Geocoding failed", e);
-    }
-}
-
-function useCurrentLocation() {
-    const btnGeo = document.getElementById('btnUseCurrentLocation');
-    if (!navigator.geolocation) {
-        alert("Geolocation is not supported by your browser.");
-        return;
-    }
-
-    if (btnGeo) {
-        btnGeo.disabled = true;
-        btnGeo.textContent = "📍 Locating...";
-    }
-
-    navigator.geolocation.getCurrentPosition(
-        (position) => {
-            const lat = position.coords.latitude;
-            const lng = position.coords.longitude;
-
-            if (map && userMarker) {
-                map.flyTo({ center: [lng, lat], zoom: 16 });
-                userMarker.setLngLat([lng, lat]);
-            }
-
-            updateCoordinates(lat, lng);
-            reverseGeocodeOpenStreetMap(lat, lng);
-            calculateNearestBranch(lat, lng);
-
-            if (btnGeo) {
-                btnGeo.disabled = false;
-                btnGeo.textContent = "📍 Use Current Location";
-            }
-        },
-        () => {
-            if (btnGeo) {
-                btnGeo.disabled = false;
-                btnGeo.textContent = "📍 Use Current Location";
-            }
-            alert("Unable to retrieve location. Please search manually above.");
-        },
-        { enableHighAccuracy: true, timeout: 10000 }
-    );
-}
-
 function selectInitialCategory(type) {
     addItemCard(type);
     goToStep(3);
+    saveFormDraft();
 }
 
 function goToStep(stepNum) {
@@ -546,6 +740,11 @@ function goToStep(stepNum) {
         }
     }
 
+    if (stepNum === 1 && map) {
+        setTimeout(() => map.resize(), 100);
+    }
+
+    saveFormDraft();
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -640,6 +839,7 @@ function createCustomDropdownNode(wrapperId, hiddenName, options, defaultValue, 
         optItem.onclick = (e) => {
             selectCustomOption(wrapperId, hiddenName, opt.value, opt.label, e.currentTarget);
             if (onSelectCallback) onSelectCallback(opt.value);
+            saveFormDraft();
         };
 
         popover.appendChild(optItem);
@@ -670,6 +870,7 @@ function selectCustomOption(wrapperId, hiddenName, value, label, targetElement) 
         if (targetElement) targetElement.classList.add('selected');
     }
     closeAllDropdowns();
+    saveFormDraft();
 }
 
 function renderCalendar() {
@@ -729,6 +930,7 @@ function renderCalendar() {
 
                 renderTimeSelectors();
                 closeAllDropdowns();
+                saveFormDraft();
             };
         }
 
@@ -944,7 +1146,12 @@ function renderTimeSelectors() {
     btnOk.type = "button";
     btnOk.className = "clock-action-btn ok";
     btnOk.textContent = "OK";
-    btnOk.onclick = (e) => { e.stopPropagation(); updateTimeDisplay(); closeAllDropdowns(); };
+    btnOk.onclick = (e) => { 
+        e.stopPropagation(); 
+        updateTimeDisplay(); 
+        closeAllDropdowns(); 
+        saveFormDraft();
+    };
 
     footer.appendChild(btnCancel);
     footer.appendChild(btnOk);
@@ -973,6 +1180,7 @@ function selectCakeShape(idx, shapeVal) {
         });
     }
     updateCakeUI(idx);
+    saveFormDraft();
 }
 
 function selectCakeTier(idx, tierVal) {
@@ -987,6 +1195,7 @@ function selectCakeTier(idx, tierVal) {
         });
     }
     updateCakeUI(idx);
+    saveFormDraft();
 }
 
 function createIsometricCakeSVG(tiers, shape) {
@@ -1257,6 +1466,7 @@ function addMessageRow(itemIdx, defaultText, defaultPlacement, defaultColor) {
 function removeMessageRow(itemIdx, mIdx) {
     const row = document.getElementById('msgRow_' + itemIdx + '_' + mIdx);
     if (row) row.remove();
+    saveFormDraft();
 }
 
 function createColorPickerItem(name, labelText, defaultValue, id) {
@@ -1297,7 +1507,7 @@ function updateCupcakeIcingUI(itemIdx, styleVal) {
     } else if (styleVal === 'rainbow') {
         const badge = document.createElement('div');
         badge.className = 'rainbow-preset-badge';
-        badge.textContent = '🌈 Rainbow Swirl frosting preset applied!';
+        badge.textContent = 'Rainbow Swirl frosting preset applied!';
         container.appendChild(badge);
     }
 }
@@ -1305,6 +1515,7 @@ function updateCupcakeIcingUI(itemIdx, styleVal) {
 function removeItemCard(index) { 
     const el = document.getElementById('itemCard_' + index);
     if (el) el.remove(); 
+    saveFormDraft();
 }
 
 function openCakeAlbumModal() {
@@ -1359,7 +1570,6 @@ async function processImage(file, idx) {
     const actionsOverlay = document.getElementById('actionsOverlay_' + idx);
     const loader = document.getElementById('loader_' + idx);
 
-    // Fast Canvas Downscale before API transmission
     const compressedFile = await compressImageFile(file);
     const imageObjectURL = URL.createObjectURL(compressedFile);
 
@@ -1439,6 +1649,7 @@ async function processImage(file, idx) {
         if (loader) loader.classList.remove('visible');
         console.error("Extraction Error:", error);
     }
+    saveFormDraft();
 }
 
 function addItemCard(type) {
@@ -1455,10 +1666,10 @@ function addItemCard(type) {
     const titleSpan = document.createElement('span');
     titleSpan.className = 'card-title-text';
 
-    if (type === 'custom_cake') titleSpan.textContent = '🎂 Custom Cake Design';
-    else if (type === 'cupcakes') titleSpan.textContent = '🧁 Cupcakes';
-    else if (type === 'giveaway_loaf') titleSpan.textContent = '🍞 Cheesy Taisan Loaf Giveaways';
-    else if (type === 'giveaway_round') titleSpan.textContent = '🍰 Round Giveaways';
+    if (type === 'custom_cake') titleSpan.textContent = 'Custom Cake Design';
+    else if (type === 'cupcakes') titleSpan.textContent = 'Cupcakes';
+    else if (type === 'giveaway_loaf') titleSpan.textContent = 'Cheesy Taisan Loaf Giveaways';
+    else if (type === 'giveaway_round') titleSpan.textContent = 'Round Giveaways';
 
     headerRow.appendChild(titleSpan);
 
@@ -1495,7 +1706,7 @@ function addItemCard(type) {
         const dropZone = createUploadDropZoneNode(itemIndex);
 
         const albumBtn = document.createElement('button');
-        albumBtn.type = 'button'; albumBtn.className = 'btn-duo-outline'; albumBtn.textContent = '📖 Pick from Business Cake Album'; albumBtn.onclick = openCakeAlbumModal;
+        albumBtn.type = 'button'; albumBtn.className = 'btn-duo-outline'; albumBtn.textContent = 'Pick from Business Cake Album'; albumBtn.onclick = openCakeAlbumModal;
 
         uploadCol.appendChild(dropZone); uploadCol.appendChild(albumBtn); grid.appendChild(uploadCol);
 
@@ -1507,10 +1718,10 @@ function addItemCard(type) {
         const aiInner = document.createElement('div');
         aiInner.className = 'ai-inner-box';
         
-        const tHead = document.createElement('div'); tHead.className = 'ai-field-head'; tHead.textContent = '✨ Identified Theme';
+        const tHead = document.createElement('div'); tHead.className = 'ai-field-head'; tHead.textContent = 'Identified Theme';
         const tInput = document.createElement('input'); tInput.type = 'text'; tInput.name = 'items[' + itemIndex + '][ai_theme]'; tInput.id = 'themeInput_' + itemIndex; tInput.className = 'clean-input ai-theme-input'; tInput.placeholder = 'e.g. Minimalist Floral, Spider-Man...';
         
-        const dHead = document.createElement('div'); dHead.className = 'ai-field-head'; dHead.textContent = '📝 Design Specs';
+        const dHead = document.createElement('div'); dHead.className = 'ai-field-head'; dHead.textContent = 'Design Specs';
         const dArea = document.createElement('textarea'); dArea.name = 'items[' + itemIndex + '][ai_description]'; dArea.id = 'descInput_' + itemIndex; dArea.className = 'clean-input'; dArea.rows = 2; dArea.placeholder = 'e.g. Pastel pink frosting with white piping details...';
 
         aiInner.appendChild(tHead); aiInner.appendChild(tInput); aiInner.appendChild(dHead); aiInner.appendChild(dArea); aiRes.appendChild(aiInner); fieldsCol.appendChild(aiRes);
@@ -1637,7 +1848,7 @@ function addItemCard(type) {
         const icgDropdown = createCustomDropdownNode('cup_icg_wrap_' + itemIndex, 'items[' + itemIndex + '][icing_style]', [
             {label: 'Single Color', value: 'single'},
             {label: 'Duo-Color Swirl', value: 'duo'},
-            {label: 'Rainbow Swirl 🌈', value: 'rainbow'}
+            {label: 'Rainbow Swirl', value: 'rainbow'}
         ], 'single', (val) => updateCupcakeIcingUI(cIdx, val));
         icgGroup.appendChild(icgLabel); icgGroup.appendChild(icgDropdown); grid2.appendChild(icgGroup);
 
@@ -1662,6 +1873,7 @@ function addItemCard(type) {
                     topperSub.classList.remove('is-active');
                 }
             } 
+            saveFormDraft();
         };
         const topTxt = document.createTextNode(' Request Custom Cupcake Toppers');
         topLbl.appendChild(topCb); topLbl.appendChild(topTxt); topSec.appendChild(topLbl);
@@ -1693,7 +1905,7 @@ function addItemCard(type) {
         const cbRib = document.createElement('input'); cbRib.type = 'checkbox'; cbRib.name = 'items[' + itemIndex + '][ribbon]'; cbRib.value = '1'; cbRib.className = 'checkbox-small-size';
         lRib.appendChild(cbRib); lRib.appendChild(document.createTextNode(' Include Ribbon'));
 
-        pkgWrap.appendChild(lBox); pkgWrap.appendChild(lRib); pkgGroup.appendChild(pkgLabel); pkgGroup.appendChild(pkgWrap); grid.appendChild(pkgGroup);
+        pkgWrap.appendChild(lBox); pkgWrap.appendChild(lRib); pkgGroup.appendChild(pkgLabel); pkgWrap.appendChild(pkgWrap); grid.appendChild(pkgGroup);
 
         card.appendChild(grid);
         card.appendChild(createThankYouTagNode(itemIndex));
@@ -1859,6 +2071,7 @@ function createThankYouTagNode(idx) {
                 tagSub.classList.remove('is-active');
             }
         }
+        saveFormDraft();
     };
 
     label.appendChild(cb);

@@ -20,7 +20,6 @@ use App\Http\Controllers\WalkInOrderController;
 use App\Http\Controllers\WishlistController;
 use App\Http\Middleware\EnsureStaffTerminalUnlocked;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -55,7 +54,7 @@ Route::get('/email/verify/{id}/{hash}', function (EmailVerificationRequest $requ
     return redirect()->route('orders.index');
 })->middleware(['auth', 'signed'])->name('verification.verify');
 
-// Customer Routes
+// Customer Base Routes
 Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', function () {
         return view('user.dashboard');
@@ -74,19 +73,6 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::get('/challenge', [ChallengeController::class, 'notice'])->name('challenge.notice');
     Route::post('/challenge/verify', [ChallengeController::class, 'verify'])->name('challenge.verify');
     Route::post('/challenge/resend', [ChallengeController::class, 'resend'])->name('challenge.resend');
-
-    Route::group(['middleware' => function (Request $request, $next) {
-        if ($request->session()->has('requires_challenge')) {
-            return redirect()->route('challenge.notice');
-        }
-
-        return $next($request);
-    }], function () {
-        Route::get('/dashboard', function () {
-            return view('user.dashboard');
-        })->name('dashboard');
-        Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
-    });
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
@@ -132,6 +118,9 @@ Route::middleware(['auth', 'staff', EnsureStaffTerminalUnlocked::class])
     ->name('staff.')
     ->group(function () {
         Route::get('/dashboard', [TicketReviewController::class, 'index'])->name('dashboard');
+        Route::get('/tickets/{id}', [TicketReviewController::class, 'show'])->name('tickets.show');
+        Route::put('/tickets/{id}/quote', [TicketReviewController::class, 'updateQuote'])->name('tickets.quote');
+        Route::put('/tickets/{id}/status', [ProductionScheduleController::class, 'updateStage'])->name('tickets.status');
 
         Route::get('/qr-scanner', [QrVerificationController::class, 'index'])->name('qr.index');
         Route::post('/qr-scanner/verify', [QrVerificationController::class, 'verify'])->name('qr.verify');

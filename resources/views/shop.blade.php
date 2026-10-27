@@ -6,8 +6,25 @@
     <title>Shop Our Delicacies | Masaganang Pagpapala</title>
     <link rel="icon" type="image/x-icon" href="{{ asset('images/logo.png') }}">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ asset('css/welcome.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/loader.css') }}">
+    <link rel="preload" href="{{ asset('css/welcome.css') }}" as="style">
+    <link rel="preload" href="{{ asset('css/loader.css') }}" as="style">
+    <link rel="stylesheet" href="{{ asset('css/welcome.css') }}" media="print" onload="this.media='all'">
+    <link rel="stylesheet" href="{{ asset('css/loader.css') }}" media="print" onload="this.media='all'">
+
+    <!-- Register Service Worker for offline capability -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('{{ asset('sw.js') }}')
+                    .then(registration => {
+                        console.log('SW registered:', registration.scope);
+                    })
+                    .catch(error => {
+                        console.log('SW registration failed:', error);
+                    });
+            });
+        }
+    </script>
 
     <style>
         .shop-container {
@@ -162,6 +179,8 @@
             justify-content: space-between;
             transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
             box-sizing: border-box;
+            contain: layout style paint;
+            will-change: transform, box-shadow;
         }
 
         .product-card:hover {
@@ -176,12 +195,14 @@
             background: #F9FAFB;
             position: relative;
             overflow: hidden;
+            contain: layout style paint;
         }
 
         .product-image-box img {
             width: 100%;
             height: 100%;
             object-fit: cover;
+            contain: layout style paint;
         }
 
         .badge-tag {
@@ -246,11 +267,158 @@
             display: block;
             margin-top: 8px;
             transition: background 0.15s ease, color 0.15s ease;
+            contain: layout style paint;
         }
 
         .btn-view-product:hover {
             background: #8A38F5;
             color: #FFFFFF;
+        }
+
+        /* Responsive improvements */
+        @media (max-width: 768px) {
+            .shop-container {
+                padding: 0 8px;
+            }
+
+            .banner-carousel-wrapper {
+                margin: 12px 8px 24px 8px;
+                border-radius: 16px;
+            }
+
+            .banner-slide {
+                height: clamp(140px, 35vw, 280px);
+            }
+
+            .category-nav-wrapper {
+                padding: 0 8px;
+                margin-bottom: 20px;
+            }
+
+            .cat-pill {
+                padding: 8px 16px;
+                font-size: 0.8rem;
+            }
+
+            .section-header {
+                padding: 0 8px;
+                margin-bottom: 12px;
+            }
+
+            .section-title {
+                font-size: clamp(1.1rem, 3vw, 1.4rem);
+            }
+
+            .scroller-wrapper {
+                margin-bottom: 28px;
+            }
+
+            .horizontal-scroller {
+                gap: 12px;
+                padding: 4px 8px 12px 8px;
+            }
+
+            .product-card {
+                flex: 0 0 clamp(180px, 50vw, 220px);
+            }
+
+            .product-image-box {
+                height: 160px;
+            }
+
+            .product-info {
+                padding: 12px;
+                gap: 4px;
+            }
+
+            .product-name {
+                font-size: 0.9rem;
+            }
+
+            .product-price {
+                font-size: 1rem;
+            }
+
+            .btn-view-product {
+                padding: 8px;
+                font-size: 0.75rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .banner-carousel-wrapper {
+                margin: 8px 4px 16px 4px;
+                border-radius: 12px;
+            }
+
+            .banner-slide {
+                height: clamp(120px, 45vw, 220px);
+            }
+
+            .category-pills {
+                gap: 6px;
+            }
+
+            .cat-pill {
+                padding: 6px 12px;
+                font-size: 0.75rem;
+            }
+
+            .section-title {
+                font-size: clamp(1rem, 4vw, 1.2rem);
+            }
+
+            .horizontal-scroller {
+                gap: 8px;
+                padding: 4px 4px 8px 4px;
+            }
+
+            .product-card {
+                flex: 0 0 clamp(160px, 60vw, 200px);
+            }
+
+            .product-image-box {
+                height: 140px;
+            }
+
+            .product-info {
+                padding: 10px;
+            }
+
+            .product-name {
+                font-size: 0.85rem;
+            }
+        }
+
+        /* Touch device optimizations */
+        @media (hover: none) and (pointer: coarse) {
+            .product-card:hover,
+            .btn-view-product:hover,
+            .cat-pill:hover {
+                transform: none;
+                box-shadow: none;
+                border-color: inherit;
+                background: inherit;
+                color: inherit;
+            }
+
+            .product-card:active,
+            .btn-view-product:active {
+                transform: scale(0.98);
+            }
+        }
+
+        /* Reduced motion support */
+        @media (prefers-reduced-motion: reduce) {
+            .banner-track {
+                transition: none;
+            }
+
+            .product-card,
+            .btn-view-product,
+            .cat-pill {
+                transition: none;
+            }
         }
     </style>
 </head>
@@ -268,8 +436,8 @@
             <div class="banner-carousel-wrapper">
                 <div class="banner-track" id="bannerTrack">
                     <!-- Replace image paths with your created promotional banners -->
-                    <img src="{{ asset('images/banners/banner1.png') }}" alt="Special Offer" class="banner-slide" onerror="this.src='https://via.placeholder.com/1200x350/8A38F5/FFFFFF?text=New+Dedication+Cakes'">
-                    <img src="{{ asset('images/banners/banner2.png') }}" alt="New Treats" class="banner-slide" onerror="this.src='https://via.placeholder.com/1200x350/310669/FFFFFF?text=Freshly+Baked+Loaves'">
+                    <img src="{{ asset('images/banners/banner1.png') }}" alt="Special Offer" class="banner-slide" loading="eager" fetchpriority="high" onerror="this.src='https://via.placeholder.com/1200x350/8A38F5/FFFFFF?text=New+Dedication+Cakes'">
+                    <img src="{{ asset('images/banners/banner2.png') }}" alt="New Treats" class="banner-slide"  onerror="this.src='https://via.placeholder.com/1200x350/310669/FFFFFF?text=Freshly+Baked+Loaves'">
                 </div>
                 <div class="carousel-indicators">
                     <div class="dot active" onclick="goToSlide(0)"></div>
@@ -281,12 +449,12 @@
             <div class="category-nav-wrapper">
                 <div class="category-pills">
                     <a href="#all" class="cat-pill active">All Products</a>
-                    <a href="#new" class="cat-pill">✨ New Arrivals</a>
-                    <a href="#cakes" class="cat-pill">🎂 Dedication Cakes</a>
-                    <a href="#loaves" class="cat-pill">🍞 Loaves</a>
-                    <a href="#acetates" class="cat-pill">🍰 Acetates</a>
-                    <a href="#treats" class="cat-pill">🍫 Treats & Choco Bars</a>
-                    <a href="#cupcakes" class="cat-pill">🧁 Cupcakes</a>
+                    <a href="#new" class="cat-pill"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 6px;"><polyline points="22 7 13.41 15.59 9 11.18 4.41 15.75 2 13 20 7"></polyline></svg>New Arrivals</a>
+                    <a href="#cakes" class="cat-pill"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 6px;"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>Dedication Cakes</a>
+                    <a href="#loaves" class="cat-pill"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 6px;"><path d="M4 19h16"></path><path d="M9 3v2"></path><path d="M15 3v2"></path><path d="M8 19a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2"></path></svg>Loaves</a>
+                    <a href="#acetates" class="cat-pill"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 6px;"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path><path d="M12 8v8"></path><path d="M8 12h8"></path></svg>Acetates</a>
+                    <a href="#treats" class="cat-pill"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 6px;"><path d="M12 2a10 10 0 1 0 10 10"></path><path d="M16 8l4 4-4 4-4-4z"></path></svg>Treats & Choco Bars</a>
+                    <a href="#cupcakes" class="cat-pill"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 6px;"><path d="M12 3v18"></path><path d="M5 10h14"></path><path d="M5 14h14"></path><path d="M8 6a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2H8V6z"></path><path d="M7 19a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2z"></path></svg>Cupcakes</a>
                 </div>
             </div>
 
@@ -301,7 +469,7 @@
                     <div class="product-card">
                         <div class="product-image-box">
                             <span class="badge-tag">NEW</span>
-                            <img src="{{ asset('images/products/sample-cake.jpg') }}" alt="Special Cake" onerror="this.src='https://via.placeholder.com/240x180/F3E8FF/7E22CE?text=Dedication+Cake'">
+                            <img src="{{ asset('images/products/" sample-cake.jpg') }}" alt="Special Cake" onerror="this.src='https://via.placeholder.com/240x180/F3E8FF/7E22CE?text=Dedication+Cake'">
                         </div>
                         <div class="product-info">
                             <h3 class="product-name">Mango Bravo Dedication Cake</h3>
@@ -314,7 +482,7 @@
                     <div class="product-card">
                         <div class="product-image-box">
                             <span class="badge-tag">ORIGINAL</span>
-                            <img src="{{ asset('images/products/sample-loaf.jpg') }}" alt="Special Loaf" onerror="this.src='https://via.placeholder.com/240x180/F3E8FF/7E22CE?text=Special+Loaf'">
+                            <img src="{{ asset('images/products/" sample-loaf.jpg') }}" alt="Special Loaf" onerror="this.src='https://via.placeholder.com/240x180/F3E8FF/7E22CE?text=Special+Loaf'">
                         </div>
                         <div class="product-info">
                             <h3 class="product-name">Ube Cheese Loaf Special</h3>
@@ -334,7 +502,7 @@
                 <div class="horizontal-scroller">
                     <div class="product-card">
                         <div class="product-image-box">
-                            <img src="{{ asset('images/products/choco-cake.jpg') }}" alt="Choco Fudge" onerror="this.src='https://via.placeholder.com/240x180/F3E8FF/7E22CE?text=Choco+Fudge'">
+                            <img src="{{ asset('images/products/" choco-cake.jpg') }}" alt="Choco Fudge" onerror="this.src='https://via.placeholder.com/240x180/F3E8FF/7E22CE?text=Choco+Fudge'">
                         </div>
                         <div class="product-info">
                             <h3 class="product-name">Rich Choco Fudge Dedication Cake</h3>
@@ -355,7 +523,7 @@
                     <div class="product-card">
                         <div class="product-image-box">
                             <span class="badge-tag">BESTSELLER</span>
-                            <img src="{{ asset('images/products/bar.jpg') }}" alt="Choco Bar" onerror="this.src='https://via.placeholder.com/240x180/F3E8FF/7E22CE?text=Choco+Bar'">
+                            <img src="{{ asset('images/products/" bar.jpg') }}" alt="Choco Bar" onerror="this.src='https://via.placeholder.com/240x180/F3E8FF/7E22CE?text=Choco+Bar'">
                         </div>
                         <div class="product-info">
                             <h3 class="product-name">Handcrafted Dark Choco Bar</h3>

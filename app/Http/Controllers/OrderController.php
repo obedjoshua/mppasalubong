@@ -48,14 +48,19 @@ class OrderController extends Controller
 
     public function store(Request $request)
     {
+        // Default customer_name to authenticated user's name if not provided
+        if (! $request->has('customer_name') && Auth::check()) {
+            $request->merge(['customer_name' => Auth::user()->name ?? 'Valued Customer']);
+        }
+
         $validated = $request->validate([
             'customer_name' => 'required|string|max:255',
-            'customer_location' => 'required|string',
+            'customer_address' => 'required|string',
             'pickup_branch' => 'required|string|in:main_shop,san_jose',
             'pickup_date' => 'required|date',
             'pickup_time' => 'required|string',
-            'lat' => 'nullable|numeric',
-            'lng' => 'nullable|numeric',
+            'customer_lat' => 'nullable|numeric',
+            'customer_lng' => 'nullable|numeric',
             'additional_notes' => 'nullable|string',
             'items' => 'required|array|min:1',
             'items.*.item_type' => 'required|string',
@@ -63,8 +68,8 @@ class OrderController extends Controller
             'items.*.reference_image' => 'nullable|image|max:10240',
         ]);
 
-        $lat = $request->input('lat');
-        $lng = $request->input('lng');
+        $lat = $request->input('customer_lat');
+        $lng = $request->input('customer_lng');
         $distKm = null;
 
         if ($lat && $lng) {
@@ -91,7 +96,7 @@ class OrderController extends Controller
                 'customer_phone' => $user ? ($user->phone ?? null) : null,
                 'facebook_messenger_id' => $messengerId,
                 'pickup_branch' => $validated['pickup_branch'],
-                'location_address' => $validated['customer_location'],
+                'location_address' => $validated['customer_address'],
                 'customer_latitude' => $lat,
                 'customer_longitude' => $lng,
                 'calculated_distance_km' => $distKm,
@@ -120,7 +125,6 @@ class OrderController extends Controller
                 if ($request->hasFile("items.{$index}.reference_image")) {
                     $file = $request->file("items.{$index}.reference_image");
 
-                    // Store the uploaded reference image in the database as a data URI.
                     $base64 = base64_encode(file_get_contents($file->getRealPath()));
                     $mime = $file->getMimeType();
                     $imageDataUri = "data:{$mime};base64,{$base64}";
@@ -128,7 +132,6 @@ class OrderController extends Controller
 
                 $customOptions = $itemData;
                 unset($customOptions['item_type'], $customOptions['quantity']);
-
 
                 if ($customTagUrl) {
                     $customOptions['custom_tag_path'] = $customTagUrl;
@@ -138,7 +141,7 @@ class OrderController extends Controller
                     'order_ticket_id' => $ticket->id,
                     'item_type' => $itemData['item_type'],
                     'quantity' => $itemData['quantity'],
-                    'image_data' => $imageDataUri, // Saved directly in DB
+                    'image_data' => $imageDataUri,
                     'r2_url' => null,
                     'reference_image_path' => null,
                     'custom_options' => $customOptions,
@@ -193,7 +196,7 @@ class OrderController extends Controller
 
     private function calculateHaversineDistance($lat1, $lon1, $lat2, $lon2): float
     {
-        $earthRadius = 6371; // radius in km
+        $earthRadius = 6371;
         $dLat = deg2rad($lat2 - $lat1);
         $dLon = deg2rad($lon2 - $lon1);
 

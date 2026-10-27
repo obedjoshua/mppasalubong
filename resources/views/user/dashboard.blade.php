@@ -6,11 +6,30 @@
     <title>My Dashboard | Masaganang Pagpapala Pasalubong</title>
     <link rel="icon" type="image/x-icon" href="{{ asset('images/logo.png') }}">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ asset('css/welcome.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/loader.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}">
+    <link rel="preload" href="{{ asset('css/welcome.css') }}" as="style">
+    <link rel="preload" href="{{ asset('css/loader.css') }}" as="style">
+    <link rel="preload" href="{{ asset('css/dashboard.css') }}" as="style">
+    <link rel="stylesheet" href="{{ asset('css/welcome.css') }}" media="print" onload="this.media='all'">
+    <link rel="stylesheet" href="{{ asset('css/loader.css') }}" media="print" onload="this.media='all'">
+    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}" media="print" onload="this.media='all'">
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+
+    <!-- Register Service Worker for offline capability -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('{{ asset('sw.js') }}')
+                    .then(registration => {
+                        console.log('SW registered:', registration.scope);
+                    })
+                    .catch(error => {
+                        console.log('SW registration failed:', error);
+                    });
+            });
+        }
+    </script>
+
     <style>
         .otp-modal-overlay {
             position: fixed;
@@ -186,8 +205,8 @@
             <div class="user-greeting-box">
                 <div style="display: flex; align-items: center; gap: 16px;">
                     <div class="avatar-wrapper">
-                        <img src="{{ !empty(Auth::user()->avatar) ? asset(Auth::user()->avatar) : asset('images/default-avatar.jpeg') }}" alt="Profile" class="profile-avatar">
-                        <img src="{{ asset('images/frames/' . (Auth::user()->selected_frame ?: $frameClass) . '.png') }}" alt="Frame" class="frame-overlay">
+                        <img src="{{ !empty(Auth::user()->avatar) ? asset(Auth::user()->avatar) : asset('images/default-avatar.jpeg') }}" alt="Profile" class="profile-avatar" >
+                        <img src="{{ asset('images/frames/' . (Auth::user()->selected_frame ?: $frameClass) . '.png') }}" alt="Frame" class="frame-overlay" >
                     </div>
 
                     <div style="display: flex; flex-direction: column;">

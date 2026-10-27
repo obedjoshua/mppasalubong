@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\OrderTicket;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class TicketReviewController extends Controller
 {
@@ -22,19 +23,33 @@ class TicketReviewController extends Controller
 
     public function index(Request $request)
     {
-        $status = $request->get('status', 'Pending Staff Review');
-        $branch = $request->get('branch');
+        $statuses = [
+            'Pending Staff Review',
+            'Approved for Payment',
+            'In Production',
+            'Ready for Pickup',
+            'Completed',
+            'Cancelled',
+        ];
 
-        $tickets = OrderTicket::with('items')
-            ->when($status, fn ($q) => $q->where('status', $status))
-            ->when($branch, fn ($q) => $q->where('pickup_branch', $branch))
-            ->orderBy('created_at', 'desc')
-            ->paginate(15);
+        $filters = $request->validate([
+            'status' => ['nullable', Rule::in($statuses)],
+            'branch' => ['nullable', Rule::in(['main_shop', 'san_jose'])],
+        ]);
+        $status = $filters['status'] ?? null;
+        $branch = $filters['branch'] ?? null;
 
-        return view('staff.tickets.index', compact('tickets', 'status', 'branch'));
+        $tickets = OrderTicket::with(['items', 'user'])
+            ->when($status, fn ($query) => $query->where('status', $status))
+            ->when($branch, fn ($query) => $query->where('pickup_branch', $branch))
+            ->orderByDesc('created_at')
+            ->paginate(15)
+            ->withQueryString();
+
+        return view('staff.tickets.index', compact('tickets', 'statuses', 'status', 'branch'));
     }
 
-    public function show($id)
+    public function show(string $id)
     {
         $ticket = OrderTicket::with(['items', 'user'])->findOrFail($id);
 
@@ -45,11 +60,15 @@ class TicketReviewController extends Controller
     {
         $ticket = OrderTicket::findOrFail($id);
 
+        if ($ticket->status !== 'Pending Staff Review') {
+            return back()->with('error', "Ticket #{$ticket->id} is no longer awaiting review.");
+        }
+
         $validated = $request->validate([
-            'quoted_price' => 'required|numeric|min:0',
+            'action' => 'required|in:approve,reject',
+            'quoted_price' => 'required_if:action,approve|nullable|numeric|min:0',
             'deposit_amount' => 'nullable|numeric|min:0',
             'staff_notes' => 'nullable|string|max:1000',
-            'action' => 'required|in:approve,reject',
         ]);
 
         if ($validated['action'] === 'approve') {
@@ -60,7 +79,7 @@ class TicketReviewController extends Controller
                 'status' => 'Approved for Payment',
             ]);
 
-            return redirect()->route('staff.tickets.index')
+            return redirect()->route('staff.dashboard')
                 ->with('success', "Ticket #{$ticket->id} approved and quoted at ₱".number_format($validated['quoted_price'], 2));
         }
 
@@ -69,7 +88,7 @@ class TicketReviewController extends Controller
             'status' => 'Cancelled',
         ]);
 
-        return redirect()->route('staff.tickets.index')
+        return redirect()->route('staff.dashboard')
             ->with('info', "Ticket #{$ticket->id} was rejected.");
     }
 }
