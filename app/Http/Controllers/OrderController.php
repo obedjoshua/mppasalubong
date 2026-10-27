@@ -15,7 +15,8 @@ class OrderController extends Controller
 {
     // Shop Coordinates Constants
     const MAIN_SHOP = ['lat' => 15.186235193924075, 'lng' => 120.95964131143174];
-    const SAN_JOSE  = ['lat' => 15.147108923134585, 'lng' => 120.97994960855327];
+
+    const SAN_JOSE = ['lat' => 15.147108923134585, 'lng' => 120.97994960855327];
 
     public function index()
     {
@@ -53,16 +54,16 @@ class OrderController extends Controller
         }
 
         $validated = $request->validate([
-            'customer_name'    => 'required|string|max:255',
+            'customer_name' => 'required|string|max:255',
             'customer_address' => 'required|string',
-            'pickup_branch'    => 'required|string|in:main_shop,san_jose',
-            'pickup_date'      => 'required|date',
-            'pickup_time'      => 'required|string',
-            'customer_lat'     => 'nullable|numeric',
-            'customer_lng'     => 'nullable|numeric',
+            'pickup_branch' => 'required|string|in:main_shop,san_jose',
+            'pickup_date' => 'required|date',
+            'pickup_time' => 'required|string',
+            'customer_lat' => 'nullable|numeric',
+            'customer_lng' => 'nullable|numeric',
             'additional_notes' => 'nullable|string',
-            'items'            => 'required|array|min:1',
-            'items.*.item_type'=> 'required|string',
+            'items' => 'required|array|min:1',
+            'items.*.item_type' => 'required|string',
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.reference_image' => 'nullable|image|max:10240',
         ]);
@@ -89,21 +90,21 @@ class OrderController extends Controller
             $preferredChannel = $messengerId ? 'messenger' : 'email';
 
             $ticket = OrderTicket::create([
-                'user_id'                         => Auth::id(),
-                'customer_name'                   => $validated['customer_name'],
-                'customer_email'                  => $user ? $user->email : null,
-                'customer_phone'                  => $user ? ($user->phone ?? null) : null,
-                'facebook_messenger_id'           => $messengerId,
-                'pickup_branch'                   => $validated['pickup_branch'],
-                'location_address'                => $validated['customer_address'],
-                'customer_latitude'               => $lat,
-                'customer_longitude'              => $lng,
-                'calculated_distance_km'          => $distKm,
-                'pickup_date'                     => $validated['pickup_date'],
-                'pickup_time'                     => $validated['pickup_time'],
-                'additional_notes'                => $validated['additional_notes'] ?? null,
-                'status'                          => 'Pending Staff Review',
-                'qr_token'                        => Str::random(64),
+                'user_id' => Auth::id(),
+                'customer_name' => $validated['customer_name'],
+                'customer_email' => $user ? $user->email : null,
+                'customer_phone' => $user ? ($user->phone ?? null) : null,
+                'facebook_messenger_id' => $messengerId,
+                'pickup_branch' => $validated['pickup_branch'],
+                'location_address' => $validated['customer_address'],
+                'customer_latitude' => $lat,
+                'customer_longitude' => $lng,
+                'calculated_distance_km' => $distKm,
+                'pickup_date' => $validated['pickup_date'],
+                'pickup_time' => $validated['pickup_time'],
+                'additional_notes' => $validated['additional_notes'] ?? null,
+                'status' => 'Pending Staff Review',
+                'qr_token' => Str::random(64),
                 'preferred_notification_channel' => $preferredChannel,
             ]);
 
@@ -137,13 +138,13 @@ class OrderController extends Controller
                 }
 
                 OrderTicketItem::create([
-                    'order_ticket_id'      => $ticket->id,
-                    'item_type'            => $itemData['item_type'],
-                    'quantity'             => $itemData['quantity'],
-                    'image_data'            => $imageDataUri,
-                    'r2_url'               => null,
+                    'order_ticket_id' => $ticket->id,
+                    'item_type' => $itemData['item_type'],
+                    'quantity' => $itemData['quantity'],
+                    'image_data' => $imageDataUri,
+                    'r2_url' => null,
                     'reference_image_path' => null,
-                    'custom_options'       => $customOptions,
+                    'custom_options' => $customOptions,
                 ]);
             }
 
@@ -162,8 +163,8 @@ class OrderController extends Controller
         $qrData = $qrService->generateTicketQr($orderTicket->id, $orderTicket->qr_token ?? $orderTicket->id);
 
         return view('tickets.show', [
-            'ticket'           => $orderTicket,
-            'qrData'           => $qrData,
+            'ticket' => $orderTicket,
+            'qrData' => $qrData,
             'isDashboardView' => request()->routeIs('dashboard.*') || request()->has('from_dashboard'),
         ]);
     }

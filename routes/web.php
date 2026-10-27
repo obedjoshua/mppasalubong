@@ -20,7 +20,6 @@ use App\Http\Controllers\WalkInOrderController;
 use App\Http\Controllers\WishlistController;
 use App\Http\Middleware\EnsureStaffTerminalUnlocked;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -119,6 +118,9 @@ Route::middleware(['auth', 'staff', EnsureStaffTerminalUnlocked::class])
     ->name('staff.')
     ->group(function () {
         Route::get('/dashboard', [TicketReviewController::class, 'index'])->name('dashboard');
+        Route::get('/tickets/{id}', [TicketReviewController::class, 'show'])->name('tickets.show');
+        Route::put('/tickets/{id}/quote', [TicketReviewController::class, 'updateQuote'])->name('tickets.quote');
+        Route::put('/tickets/{id}/status', [ProductionScheduleController::class, 'updateStage'])->name('tickets.status');
 
         Route::get('/qr-scanner', [QrVerificationController::class, 'index'])->name('qr.index');
         Route::post('/qr-scanner/verify', [QrVerificationController::class, 'verify'])->name('qr.verify');

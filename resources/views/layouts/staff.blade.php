@@ -49,15 +49,13 @@
     <!-- Hidden Checkbox Toggle for Side Menu Drawer -->
     <input type="checkbox" id="menu-toggle" class="d-none">
 
-    <!-- Include Standalone Staff Header -->
-    @include('partials.staff-header')
-    
     <!-- Include Staff Side Menu Navigation Drawer -->
     @include('partials.staff-side-menu')
 
     <!-- Main Content Wrapper -->
     <div class="staff-content-wrapper">
-        
+        @include('partials.staff-header')
+
         <!-- Flash Alert Messages -->
         @if(session('success'))
             <div class="alert alert-success alert-dismissible fade show m-3" role="alert">
@@ -69,6 +67,13 @@
         @if(session('error'))
             <div class="alert alert-danger alert-dismissible fade show m-3" role="alert">
                 {{ session('error') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        @endif
+
+        @if(session('info'))
+            <div class="alert alert-info alert-dismissible fade show m-3" role="alert">
+                {{ session('info') }}
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
         @endif

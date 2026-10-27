@@ -1,7 +1,7 @@
 // Service Worker for Masaganang Pagpapala Pasalubong
 // Enables offline capability for the application
 
-const CACHE_NAME = 'mpp-cache-v5'; // Bumped cache version to force cache invalidation
+const CACHE_NAME = 'mpp-cache-v6'; // Bump to invalidate the cached staff portal styles
 const OFFLINE_URL = '/offline.html';
 
 // Assets to cache for offline use (Only existing local files)
@@ -19,6 +19,12 @@ const STATIC_ASSETS = [
     '/css/login.css',
     '/css/staff/layout.css',
     '/css/staff/dashboard.css',
+    '/css/staff/logistics.css',
+    '/css/staff/scanner.css',
+    '/css/staff/schedule.css',
+    '/css/staff/settings.css',
+    '/css/staff/walkin.css',
+    '/css/staff/tickets.css',
     '/js/welcome.js',
     '/images/logo.png',
     '/images/default-avatar.jpeg',
