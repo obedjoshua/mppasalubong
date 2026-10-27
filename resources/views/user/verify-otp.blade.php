@@ -174,7 +174,7 @@
 
             $orderCount = $approvedOrders->count();
             
-            if (Auth::user()->email === 'obeddanieljoshua@gmail.com') {
+            if (Auth::user()->role === 'admin') {
                 $frameClass = 'frame_exclusive';
             } elseif ($orderCount >= 100) {
                 $frameClass = 'frame_100';

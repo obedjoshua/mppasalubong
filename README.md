@@ -57,3 +57,10 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+# Admin and developer portals
+
+Portal access is granted only by the user's `role` (`admin`, `developer`, or `staff`), never by email domain. Administrators and developers have equal portal and staff-operation privileges: both can manage user roles at `/admin/users`, inspect instrumented API request metrics and traffic, moderate community posts, and view database/cache health and read-only Git status.
+
+API metrics currently cover the instrumented color-extraction endpoint only. No API-key management system or external connection integration exists in this application, so the portal does not claim to manage those. Request bodies and client IP addresses are not retained. Git support runs only the fixed, read-only `git status --short --branch` command.
+
+Set `PORTAL_ADMIN_SEED_PASSWORD` and `PORTAL_DEVELOPER_SEED_PASSWORD` in the ignored local `.env` file; the emails default to `admin@demo.local` and `developer@demo.local`. The portal seeder creates missing accounts but never resets the password of an existing account when seeding again, so their credentials remain stable. Keep these unique passwords in a password manager. If either account does not exist and its password is unset, the seeder skips it and writes a warning. Run `php artisan db:seed --class="Database\Seeders\PortalAccountSeeder"` to create missing portal accounts.

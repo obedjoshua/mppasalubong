@@ -15,8 +15,7 @@ class EnsureStaffUser
     {
         $user = $request->user();
 
-        // Allow access if user is staff or uses official masagana.ph domain
-        if (! $user || ! ($user->role === 'staff' || str_ends_with($user->email, '@masagana.ph') || (isset($user->is_staff) && $user->is_staff))) {
+        if (! $user || ! in_array($user->role, ['staff', 'admin', 'developer'], true)) {
             return redirect()->route('dashboard')->with('error', 'Unauthorized access to Staff Portal.');
         }
 

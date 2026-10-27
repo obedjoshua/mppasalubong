@@ -1,7 +1,7 @@
 @php
     $isAnnouncement = $post->type === 'announcement';
     $cardClass = $isAnnouncement ? 'card-announcement' : 'card-standard';
-    $isAuthorOrAdmin = Auth::check() && (Auth::id() === $post->user_id || Auth::user()->email === 'obeddanieljoshua@gmail.com');
+    $isAuthorOrAdmin = Auth::check() && (Auth::id() === $post->user_id || Auth::user()->role === 'admin');
 @endphp
 
 <!-- POST OPTIONS SCRIPT -->
@@ -220,7 +220,7 @@
                 $postAuthor = $post->user;
                 $authorOrderCount = method_exists($postAuthor, 'orders') ? $postAuthor->orders()->count() : 0;
                 $frameClass = 'frame_reg01';
-                if ($postAuthor->email === 'obeddanieljoshua@gmail.com' && $postAuthor->selected_frame === 'frame_exclusive') {
+                if ($postAuthor->role === 'admin' && $postAuthor->selected_frame === 'frame_exclusive') {
                     $frameClass = 'frame_exclusive';
                 } elseif ($authorOrderCount >= 100) { $frameClass = 'frame_100'; }
                 elseif ($authorOrderCount >= 20) { $frameClass = 'frame_20'; }
@@ -317,7 +317,7 @@
                         
                         $cOrders = method_exists($commentUser, 'orders') ? $commentUser->orders()->count() : 0;
                         $cFrame = 'frame_reg01';
-                        if ($commentUser?->email === 'obeddanieljoshua@gmail.com' && $commentUser?->selected_frame === 'frame_exclusive') {
+                        if ($commentUser?->role === 'admin' && $commentUser?->selected_frame === 'frame_exclusive') {
                             $cFrame = 'frame_exclusive';
                         } elseif ($cOrders >= 100) { $cFrame = 'frame_100'; }
                         elseif ($cOrders >= 20) { $cFrame = 'frame_20'; }
@@ -380,7 +380,7 @@
                                             
                                             $rOrders = method_exists($replyUser, 'orders') ? $replyUser->orders()->count() : 0;
                                             $rFrame = 'frame_reg01';
-                                            if ($replyUser?->email === 'obeddanieljoshua@gmail.com' && $replyUser?->selected_frame === 'frame_exclusive') {
+                                            if ($replyUser?->role === 'admin' && $replyUser?->selected_frame === 'frame_exclusive') {
                                                 $rFrame = 'frame_exclusive';
                                             } elseif ($rOrders >= 100) { $rFrame = 'frame_100'; }
                                             elseif ($rOrders >= 20) { $rFrame = 'frame_20'; }
@@ -431,7 +431,7 @@
                 $authUser = Auth::user();
                 $aOrders = method_exists($authUser, 'orders') ? $authUser->orders()->count() : 0;
                 $aFrame = 'frame_reg01';
-                if ($authUser->email === 'obeddanieljoshua@gmail.com' && $authUser->selected_frame === 'frame_exclusive') {
+                if ($authUser->role === 'admin' && $authUser->selected_frame === 'frame_exclusive') {
                     $aFrame = 'frame_exclusive';
                 } elseif ($aOrders >= 100) { $aFrame = 'frame_100'; }
                 elseif ($aOrders >= 20) { $aFrame = 'frame_20'; }

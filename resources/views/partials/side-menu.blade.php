@@ -28,7 +28,7 @@
             $frameClass = 'frame_reg01'; // Default starting frame
             
             // Check for exclusive account frame first
-            if (Auth::user()->email === 'obeddanieljoshua@gmail.com' && Auth::user()->selected_frame === 'frame_exclusive') {
+            if (Auth::user()->role === 'admin' && Auth::user()->selected_frame === 'frame_exclusive') {
                 $frameClass = 'frame_exclusive';
             } elseif ($orderCount >= 100) {
                 $frameClass = 'frame_100';

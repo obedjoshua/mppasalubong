@@ -23,6 +23,7 @@ class CommunityController extends Controller
             'reactions',
             'badge',
         ])
+            ->where('moderation_status', 'published')
             ->orderByDesc('is_pinned')
             ->latest();
 
@@ -96,7 +97,7 @@ class CommunityController extends Controller
 
     public function create()
     {
-        $isAdmin = Auth::check() && Auth::user()->email === 'obeddanieljoshua@gmail.com';
+        $isAdmin = Auth::check() && Auth::user()->role === 'admin';
 
         return view('community.create', compact('isAdmin'));
     }
@@ -105,7 +106,7 @@ class CommunityController extends Controller
     {
         /** @var User $user */
         $user = Auth::user();
-        $isAdmin = $user->email === 'obeddanieljoshua@gmail.com';
+        $isAdmin = $user->role === 'admin';
 
         $allowedTypes = $isAdmin ? 'thread,review,announcement,achievement' : 'thread,review,achievement';
 
@@ -217,7 +218,7 @@ class CommunityController extends Controller
         $orderCount = $user->orders()->count();
 
         $frameClass = 'frame_reg01';
-        if ($user->email === 'obeddanieljoshua@gmail.com' && $user->selected_frame === 'frame_exclusive') {
+        if ($user->role === 'admin' && $user->selected_frame === 'frame_exclusive') {
             $frameClass = 'frame_exclusive';
         } elseif ($orderCount >= 100) {
             $frameClass = 'frame_100';
@@ -249,7 +250,7 @@ class CommunityController extends Controller
     {
         $post = Post::findOrFail($id);
         $user = Auth::user();
-        $isAdmin = $user->email === 'obeddanieljoshua@gmail.com';
+        $isAdmin = $user->role === 'admin';
 
         if ($post->user_id !== $user->id && ! $isAdmin) {
             abort(403, 'Unauthorized action.');
@@ -262,7 +263,7 @@ class CommunityController extends Controller
     {
         $post = Post::findOrFail($id);
         $user = Auth::user();
-        $isAdmin = $user->email === 'obeddanieljoshua@gmail.com';
+        $isAdmin = $user->role === 'admin';
 
         if ($post->user_id !== $user->id && ! $isAdmin) {
             abort(403, 'Unauthorized action.');
@@ -283,7 +284,7 @@ class CommunityController extends Controller
     {
         $post = Post::findOrFail($id);
         $user = Auth::user();
-        $isAdmin = $user->email === 'obeddanieljoshua@gmail.com';
+        $isAdmin = $user->role === 'admin';
 
         if ($post->user_id !== $user->id && ! $isAdmin) {
             abort(403, 'Unauthorized action.');

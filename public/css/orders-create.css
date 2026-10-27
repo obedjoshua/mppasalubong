@@ -1555,7 +1555,7 @@ body.orders-page {
 
     .search-input-flex,
     .location-search-row {
-        flex-direction: column !direction;
+        flex-direction: column !important;
     }
 
     .btn-locate-me {

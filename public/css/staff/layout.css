@@ -21,7 +21,7 @@
 }
 
 body.staff-body {
-    background-color: #f8f9fa;
+    background-color: var(--purple-main);
     color: #212529;
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     min-height: 100vh;

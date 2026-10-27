@@ -58,7 +58,15 @@ class LoginController extends Controller
             }
 
             // 3. Systemic Role Routing Check
-            if ($user->role === 'staff' || str_ends_with($user->email, '@masagana.ph') || (isset($user->is_staff) && $user->is_staff)) {
+            if ($user->role === 'admin') {
+                return redirect()->intended(route('admin.dashboard'));
+            }
+
+            if ($user->role === 'developer') {
+                return redirect()->intended(route('developer.dashboard'));
+            }
+
+            if ($user->role === 'staff') {
                 return redirect()->intended(route('staff.dashboard'));
             }
 
