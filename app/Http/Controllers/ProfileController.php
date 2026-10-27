@@ -78,7 +78,7 @@ class ProfileController extends Controller
             $unlockedFrames[] = 'frame_100';
         }
 
-        if ($user->email === 'obeddanieljoshua@gmail.com') {
+        if ($user->role === 'admin') {
             $unlockedFrames[] = 'frame_exclusive';
         }
 
@@ -126,7 +126,7 @@ class ProfileController extends Controller
             $allowedFrames[] = 'frame_100';
         }
 
-        if ($user->email === 'obeddanieljoshua@gmail.com') {
+        if ($user->role === 'admin') {
             $allowedFrames[] = 'frame_exclusive';
         }
 

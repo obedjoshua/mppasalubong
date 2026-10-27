@@ -39,17 +39,6 @@ class DatabaseSeeder extends Seeder
                 'phone' => '+639000000002',
                 'selected_frame' => 'frame_reg01',
             ],
-            // Admin Account (preparation for future admin portal)
-            [
-                'name' => 'System Administrator',
-                'email' => 'admin@demo.local',
-                'password' => Hash::make('admin12345'),
-                'role' => 'admin',
-                'branch' => 'main_shop',
-                'email_verified_at' => now(),
-                'phone' => '+639000000003',
-                'selected_frame' => 'frame_exclusive',
-            ],
         ];
 
         foreach ($accounts as $account) {
@@ -63,6 +52,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             BadgeSeeder::class,
             StaffUserSeeder::class,
+            PortalAccountSeeder::class,
         ]);
     }
 }

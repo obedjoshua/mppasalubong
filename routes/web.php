@@ -7,6 +7,7 @@ use App\Http\Controllers\ChallengeController;
 use App\Http\Controllers\CommunityController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OrderController;
+use App\Http\Controllers\PortalController;
 use App\Http\Controllers\ProductionScheduleController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\QrVerificationController;
@@ -143,11 +144,33 @@ Route::middleware(['auth', 'staff', EnsureStaffTerminalUnlocked::class])
         Route::post('/session/unlock', [StaffSessionController::class, 'unlockSession'])->name('session.unlock');
     });
 
+Route::middleware(['auth', 'portal:admin'])
+    ->prefix('admin')
+    ->name('admin.')
+    ->group(function () {
+        Route::get('/dashboard', [PortalController::class, 'adminDashboard'])->name('dashboard');
+        Route::get('/dashboard/live', [PortalController::class, 'liveDashboard'])->name('dashboard.live');
+        Route::get('/users', [PortalController::class, 'users'])->name('users.index');
+        Route::put('/users/{user}/role', [PortalController::class, 'updateUserRole'])->name('users.role');
+    });
+
+Route::middleware(['auth', 'portal:developer'])
+    ->prefix('developer')
+    ->name('developer.')
+    ->group(function () {
+        Route::get('/dashboard', [PortalController::class, 'developerDashboard'])->name('dashboard');
+        Route::get('/dashboard/live', [PortalController::class, 'liveDashboard'])->name('dashboard.live');
+        Route::get('/api-requests', [PortalController::class, 'apiRequests'])->name('api-requests.index');
+        Route::get('/posts', [PortalController::class, 'posts'])->name('posts.index');
+        Route::put('/posts/{post}/visibility', [PortalController::class, 'updatePostVisibility'])->name('posts.visibility');
+    });
+
 // API & Community Public Routes
 Route::get('/guest/order-prompt', function () {
     return view('guest.order-prompt');
 })->name('guest.order.prompt');
 
-Route::post('/api/vision/extract-colors', [VisionController::class, 'extractColors'])->name('vision.extract');
+Route::post('/api/vision/extract-colors', [VisionController::class, 'extractColors'])
+    ->middleware('api.metrics')->name('vision.extract');
 Route::get('/community', [CommunityController::class, 'index'])->name('community.index');
 Route::get('/community/user/{id}', [CommunityController::class, 'getUserProfileJson'])->name('community.user.profile');

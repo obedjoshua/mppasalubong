@@ -22,7 +22,8 @@ class SocialAuthController extends Controller
         try {
             // Use stateless mode for local development to avoid SameSite cookie issues with OAuth redirects
             $driver = config('app.env') === 'local'
-                ? Socialite::driver('google')->stateless()
+            ? Socialite::driver('google')
+
                 : Socialite::driver('google');
             $googleUser = $driver->user();
 
@@ -101,7 +102,7 @@ class SocialAuthController extends Controller
         try {
             // Use stateless mode for local development to avoid SameSite cookie issues with OAuth redirects
             $driver = config('app.env') === 'local'
-                ? Socialite::driver('facebook')->stateless()
+            ? Socialite::driver('facebook')
                 : Socialite::driver('facebook');
             $facebookUser = $driver->user();
 

@@ -19,6 +19,7 @@ class Post extends Model
         'is_pinned',
         'review_metrics',
         'badge_id',
+        'moderation_status',
     ];
 
     protected $casts = [

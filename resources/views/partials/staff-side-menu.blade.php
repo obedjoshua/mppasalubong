@@ -10,11 +10,19 @@
     <!-- Staff Operations Navigation Links -->
     <div class="menu-card-box">
         <div class="side-menu-links">
-            <a href="{{ route('staff.dashboard') }}">dashboard</a>
-            <a href="{{ route('staff.qr.index') }}">qr scanner</a>
-            <a href="{{ route('staff.walkin.create') }}">walk-in ocr</a>
-            <a href="{{ route('staff.schedule.index') }}">production schedule</a>
-            <a href="{{ route('staff.transfers.index') }}">stock transfers & chat</a>
+            @if(in_array(Auth::user()->role, ['admin', 'developer'], true))
+                <a href="{{ Auth::user()->role === 'admin' ? route('admin.dashboard') : route('developer.dashboard') }}">overview</a>
+                <a href="{{ route('admin.users.index') }}">users & roles</a>
+                <a href="{{ route('developer.api-requests.index') }}">api requests</a>
+                <a href="{{ route('developer.posts.index') }}">post review</a>
+                <a href="{{ route('staff.dashboard') }}">staff operations</a>
+            @else
+                <a href="{{ route('staff.dashboard') }}">dashboard</a>
+                <a href="{{ route('staff.qr.index') }}">qr scanner</a>
+                <a href="{{ route('staff.walkin.create') }}">walk-in ocr</a>
+                <a href="{{ route('staff.schedule.index') }}">production schedule</a>
+                <a href="{{ route('staff.transfers.index') }}">stock transfers & chat</a>
+            @endif
         </div>
     </div>
     
@@ -31,23 +39,25 @@
                     </div>
                     <div class="profile-info" style="flex: 1; min-width: 0; overflow: hidden;">
                         <span class="profile-name" style="font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; font-weight: bold;">{{ Auth::user()->name }}</span>
-                        <span class="profile-action" style="font-size: 10px; white-space: nowrap; color: #6366f1;">Staff Terminal</span>
+                        <span class="profile-action" style="font-size: 10px; white-space: nowrap; color: #6366f1;">{{ ucfirst(Auth::user()->role) }} Portal</span>
                     </div>
                 </div>
             </div>
 
             <!-- Lock Terminal Button (Locks High-Privilege Session) -->
-            <form action="{{ route('staff.session.lock') }}" method="POST" style="margin: 0;">
-                @csrf
-                <button type="submit" class="menu-card-box profile-preview-card" title="Lock Staff Terminal" style="flex: 0 0 52px; width: 52px; height: 100%; padding: 0; margin: 0; box-sizing: border-box; border-radius: 12px !important; border: none; cursor: pointer; background: transparent;">
-                    <div class="profile-preview-inner" style="display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; padding: 0; border-radius: 12px;">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width: 22px; height: 22px; color: var(--text-black);">
-                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                        </svg>
-                    </div>
-                </button>
-            </form>
+            @if(Auth::user()->role === 'staff')
+                <form action="{{ route('staff.session.lock') }}" method="POST" style="margin: 0;">
+                    @csrf
+                    <button type="submit" class="menu-card-box profile-preview-card" title="Lock Staff Terminal" style="flex: 0 0 52px; width: 52px; height: 100%; padding: 0; margin: 0; box-sizing: border-box; border-radius: 12px !important; border: none; cursor: pointer; background: transparent;">
+                        <div class="profile-preview-inner" style="display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; padding: 0; border-radius: 12px;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width: 22px; height: 22px; color: var(--text-black);">
+                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                            </svg>
+                        </div>
+                    </button>
+                </form>
+            @endif
 
             <!-- Settings Button -->
             <a href="{{ route('staff.settings') }}" class="menu-card-box profile-preview-card" title="Staff Settings" style="text-decoration: none; flex: 0 0 52px; width: 52px; padding: 0; margin: 0; box-sizing: border-box; border-radius: 12px !important;">

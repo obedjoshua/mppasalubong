@@ -72,7 +72,7 @@
                                 <div class="visual-preview"><img src="{{ asset('images/frames/frame_reg02.png') }}"></div>
                             </label>
 
-                            @if(Auth::user()->email === 'obeddanieljoshua@gmail.com')
+                            @if(Auth::user()->role === 'admin')
                                 <label class="visual-option">
                                     <input type="radio" name="selected_frame" value="frame_exclusive" class="frame-radio" data-src="{{ asset('images/frames/frame_exclusive.png') }}" @checked($user->selected_frame == 'frame_exclusive')>
                                     <div class="visual-preview"><img src="{{ asset('images/frames/frame_exclusive.png') }}"></div>

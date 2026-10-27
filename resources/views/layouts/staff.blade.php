@@ -31,7 +31,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
-                navigator.serviceWorker.register('{{ asset('sw.js') }}')
+                navigator.serviceWorker.register("{{ asset('sw.js') }}")
                     .then(registration => {
                         console.log('SW registered:', registration.scope);
                     })

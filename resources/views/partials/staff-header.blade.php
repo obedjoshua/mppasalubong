@@ -1,10 +1,17 @@
 <header class="header">
-    <a href="{{ route('staff.dashboard') }}" class="header-left" style="text-decoration: none; color: inherit;">
+    @php
+        $portalRole = auth()->user()->role;
+        $portalHome = $portalRole === 'admin'
+            ? route('admin.dashboard')
+            : ($portalRole === 'developer' ? route('developer.dashboard') : route('staff.dashboard'));
+        $portalLabel = $portalRole === 'admin' ? 'ADMIN PORTAL' : ($portalRole === 'developer' ? 'DEVELOPER PORTAL' : 'STAFF PORTAL');
+    @endphp
+    <a href="{{ $portalHome }}" class="header-left" style="text-decoration: none; color: inherit;">
         <img src="{{ asset('images/logo.png') }}" alt="Masaganang Pagpapala Logo" class="logo-img">
         <div class="logo-text-stacked">
             <span>MASAGANANG</span>
             <span>PAGPAPALA</span>
-            <span>STAFF PORTAL</span>
+            <span>{{ $portalLabel }}</span>
         </div>
     </a>
     
