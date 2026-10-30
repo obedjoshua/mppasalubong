@@ -12,8 +12,10 @@ use App\Http\Controllers\ProductionScheduleController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\QrVerificationController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\ShopController;
 use App\Http\Controllers\StaffSessionController;
 use App\Http\Controllers\StockTransferController;
+use App\Http\Controllers\StoreManagementController;
 use App\Http\Controllers\TicketReviewController;
 use App\Http\Controllers\TwoFactorController;
 use App\Http\Controllers\VisionController;
@@ -26,7 +28,9 @@ use Illuminate\Support\Facades\Route;
 
 // Public & Auth Routes
 Route::get('/', fn () => view('welcome'))->name('home');
-Route::get('/shop', fn () => view('shop'))->name('shop');
+Route::get('/shop', [ShopController::class, 'index'])->name('shop');
+Route::get('/shop/products/lookup', [ShopController::class, 'lookup'])->name('shop.products.lookup');
+Route::get('/shop/{slug}', [ShopController::class, 'show'])->name('shop.product');
 
 Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [LoginController::class, 'login']);
@@ -149,6 +153,18 @@ Route::middleware(['auth', 'portal:admin'])
     ->name('admin.')
     ->group(function () {
         Route::get('/dashboard', [PortalController::class, 'adminDashboard'])->name('dashboard');
+        Route::get('/store', [StoreManagementController::class, 'index'])->name('store.index');
+        Route::get('/store/products/create', [StoreManagementController::class, 'createProduct'])->name('store.products.create');
+        Route::post('/store/products', [StoreManagementController::class, 'storeProduct'])->name('store.products.store');
+        Route::get('/store/products/{product}/edit', [StoreManagementController::class, 'editProduct'])->name('store.products.edit');
+        Route::put('/store/products/{product}', [StoreManagementController::class, 'updateProduct'])->name('store.products.update');
+        Route::delete('/store/products/{product}', [StoreManagementController::class, 'destroyProduct'])->name('store.products.destroy');
+        Route::post('/store/products/{product}/restore', [StoreManagementController::class, 'restoreProduct'])->name('store.products.restore');
+        Route::get('/store/banners/create', [StoreManagementController::class, 'createBanner'])->name('store.banners.create');
+        Route::post('/store/banners', [StoreManagementController::class, 'storeBanner'])->name('store.banners.store');
+        Route::get('/store/banners/{banner}/edit', [StoreManagementController::class, 'editBanner'])->name('store.banners.edit');
+        Route::put('/store/banners/{banner}', [StoreManagementController::class, 'updateBanner'])->name('store.banners.update');
+        Route::delete('/store/banners/{banner}', [StoreManagementController::class, 'destroyBanner'])->name('store.banners.destroy');
         Route::get('/dashboard/live', [PortalController::class, 'liveDashboard'])->name('dashboard.live');
         Route::get('/users', [PortalController::class, 'users'])->name('users.index');
         Route::put('/users/{user}/role', [PortalController::class, 'updateUserRole'])->name('users.role');
