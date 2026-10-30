@@ -13,6 +13,7 @@
             @if(in_array(Auth::user()->role, ['admin', 'developer'], true))
                 <a href="{{ Auth::user()->role === 'admin' ? route('admin.dashboard') : route('developer.dashboard') }}">overview</a>
                 <a href="{{ route('admin.users.index') }}">users & roles</a>
+                <a href="{{ route('admin.store.index') }}">shop content</a>
                 <a href="{{ route('developer.api-requests.index') }}">api requests</a>
                 <a href="{{ route('developer.posts.index') }}">post review</a>
                 <a href="{{ route('staff.dashboard') }}">staff operations</a>

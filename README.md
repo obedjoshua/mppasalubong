@@ -64,3 +64,11 @@ Portal access is granted only by the user's `role` (`admin`, `developer`, or `st
 API metrics currently cover the instrumented color-extraction endpoint only. No API-key management system or external connection integration exists in this application, so the portal does not claim to manage those. Request bodies and client IP addresses are not retained. Git support runs only the fixed, read-only `git status --short --branch` command.
 
 Set `PORTAL_ADMIN_SEED_PASSWORD` and `PORTAL_DEVELOPER_SEED_PASSWORD` in the ignored local `.env` file; the emails default to `admin@demo.local` and `developer@demo.local`. The portal seeder creates missing accounts but never resets the password of an existing account when seeding again, so their credentials remain stable. Keep these unique passwords in a password manager. If either account does not exist and its password is unset, the seeder skips it and writes a warning. Run `php artisan db:seed --class="Database\Seeders\PortalAccountSeeder"` to create missing portal accounts.
+
+## Shop catalog and promotions
+
+Administrators and developers can manage public products and promotional banners at `/admin/store` (also linked from either portal dashboard). Product changes use the existing `products` table and retain its slug, category, price, description, stock, and attributes fields; removed products are soft-deleted. Product highlights and extra gallery image paths are stored in the existing `attributes` JSON field. Banner copy is plain text, with validated image, link, color, alignment, and layout controls; editor content is never interpreted as HTML, CSS, or JavaScript.
+
+Apply the banner table migration with `php artisan migrate`. Uploaded product and banner images use Laravel's `public` storage disk. For local/public URL serving, run `php artisan storage:link` once after deployment and ensure `storage/app/public` is writable. Existing product image URLs remain supported.
+
+Public product detail pages use `/shop/{slug}`. Chatbot integrations can query `GET /shop/products/lookup?q=...&category=...`; the response includes public catalog details, availability, stable slug, and canonical product URL, and never includes internal stock records or user data.

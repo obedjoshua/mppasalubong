@@ -53,6 +53,14 @@
 
             <!-- Customer Name Fallback for Controller Validation -->
             <input type="hidden" name="customer_name" value="{{ Auth::check() ? Auth::user()->name : 'Valued Customer' }}">
+            @if(!empty($catalogProduct))
+                <div class="section-title-wrapper" style="padding:14px 18px;margin:12px 0;background:#f3e8ff;border-radius:12px">
+                    <strong>Catalog selection: {{ $catalogProduct->name }} × {{ $catalogQuantity }}</strong>
+                    <p class="section-subtitle" style="margin:5px 0 10px">Choose the closest product category below. This selection is attached to your request for staff review.</p>
+                    <label class="input-label" for="catalogOrderNote">Order note</label>
+                    <input id="catalogOrderNote" class="clean-input" name="additional_notes" maxlength="2000" value="Catalog product: {{ $catalogProduct->name }} (quantity {{ $catalogQuantity }})">
+                </div>
+            @endif
 
             <!-- Hidden Location Coordinates & Branch -->
             <input type="hidden" id="latInput" name="customer_lat" value="">

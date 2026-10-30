@@ -1,574 +1,138 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shop Our Delicacies | Masaganang Pagpapala</title>
-    <link rel="icon" type="image/x-icon" href="{{ asset('images/logo.png') }}">
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&display=swap" rel="stylesheet">
-    <link rel="preload" href="{{ asset('css/welcome.css') }}" as="style">
-    <link rel="preload" href="{{ asset('css/loader.css') }}" as="style">
-    <link rel="stylesheet" href="{{ asset('css/welcome.css') }}" media="print" onload="this.media='all'">
-    <link rel="stylesheet" href="{{ asset('css/loader.css') }}" media="print" onload="this.media='all'">
+@extends('layouts.app')
 
-    <!-- Register Service Worker for offline capability -->
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function() {
-                navigator.serviceWorker.register('{{ asset('sw.js') }}')
-                    .then(registration => {
-                        console.log('SW registered:', registration.scope);
-                    })
-                    .catch(error => {
-                        console.log('SW registration failed:', error);
-                    });
-            });
-        }
-    </script>
+@section('title', 'Shop | Masaganang Pagpapala')
 
+@push('styles')
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        .shop-container {
-            max-width: 1280px;
-            margin: 0 auto;
-            padding: 0 10px;
-            box-sizing: border-box;
-        }
-
-        /* 1. HERO BANNER CAROUSEL */
-        .banner-carousel-wrapper {
-            margin: 16px 10px 32px 10px;
-            position: relative;
-            border-radius: 20px;
-            overflow: hidden;
-            box-shadow: 0 10px 25px -5px rgba(49, 6, 105, 0.1);
-        }
-
-        .banner-track {
-            display: flex;
-            transition: transform 0.4s ease-in-out;
-            width: 100%;
-        }
-
-        .banner-slide {
-            min-width: 100%;
-            height: clamp(160px, 28vw, 340px);
-            object-fit: cover;
-            display: block;
-        }
-
-        .carousel-indicators {
-            position: absolute;
-            bottom: 12px;
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            gap: 8px;
-            z-index: 10;
-        }
-
-        .dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.5);
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .dot.active {
-            width: 24px;
-            border-radius: 12px;
-            background: #8A38F5;
-        }
-
-        /* 2. CATEGORY NAV PILLS */
-        .category-nav-wrapper {
-            margin-bottom: 28px;
-            padding: 0 10px;
-            overflow-x: auto;
-            white-space: nowrap;
-            scrollbar-width: none; /* Firefox */
-        }
-
-        .category-nav-wrapper::-webkit-scrollbar {
-            display: none; /* Chrome/Safari */
-        }
-
-        .category-pills {
-            display: inline-flex;
-            gap: 10px;
-        }
-
-        .cat-pill {
-            padding: 10px 20px;
-            border-radius: 30px;
-            background: #F3F4F6;
-            color: #4B5563;
-            font-family: 'Manrope', sans-serif;
-            font-weight: 800;
-            font-size: 0.85rem;
-            text-decoration: none;
-            transition: all 0.2s ease;
-            border: 1.5px solid transparent;
-        }
-
-        .cat-pill:hover, .cat-pill.active {
-            background: #F3E8FF;
-            color: #7E22CE;
-            border-color: #C084FC;
-        }
-
-        /* 3. SECTION HEADINGS */
-        .section-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0 10px;
-            margin-bottom: 16px;
-        }
-
-        .section-title {
-            font-family: 'Recoleta-Bold', serif;
-            font-size: clamp(1.25rem, 2vw, 1.65rem);
-            color: #310669;
-            margin: 0;
-        }
-
-        .section-link {
-            font-family: 'Manrope', sans-serif;
-            font-weight: 800;
-            font-size: 0.85rem;
-            color: #8A38F5;
-            text-decoration: none;
-        }
-
-        .section-link:hover {
-            text-decoration: underline;
-        }
-
-        /* 4. HORIZONTAL SCROLLER SHELF */
-        .scroller-wrapper {
-            position: relative;
-            margin-bottom: 40px;
-        }
-
-        .horizontal-scroller {
-            display: flex;
-            gap: 16px;
-            overflow-x: auto;
-            padding: 4px 10px 16px 10px;
-            scroll-snap-type: x mandatory;
-            scroll-behavior: smooth;
-            scrollbar-width: none;
-        }
-
-        .horizontal-scroller::-webkit-scrollbar {
-            display: none;
-        }
-
-        /* 5. PRODUCT CARD DESIGN */
-        .product-card {
-            flex: 0 0 clamp(200px, 42vw, 240px);
-            scroll-snap-align: start;
-            background: #FFFFFF;
-            border: 2px solid #F3F4F6;
-            border-radius: 18px;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-            box-sizing: border-box;
-            contain: layout style paint;
-            will-change: transform, box-shadow;
-        }
-
-        .product-card:hover {
-            transform: translateY(-4px);
-            border-color: #E9D5FF;
-            box-shadow: 0 12px 20px -5px rgba(126, 34, 206, 0.08);
-        }
-
-        .product-image-box {
-            width: 100%;
-            height: 180px;
-            background: #F9FAFB;
-            position: relative;
-            overflow: hidden;
-            contain: layout style paint;
-        }
-
-        .product-image-box img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            contain: layout style paint;
-        }
-
-        .badge-tag {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            background: rgba(49, 6, 105, 0.85);
-            backdrop-filter: blur(4px);
-            color: #FFFFFF;
-            font-family: 'Manrope', sans-serif;
-            font-weight: 800;
-            font-size: 0.65rem;
-            text-transform: uppercase;
-            padding: 4px 10px;
-            border-radius: 8px;
-            letter-spacing: 0.5px;
-        }
-
-        .product-info {
-            padding: 14px;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            flex-grow: 1;
-        }
-
-        .product-name {
-            font-family: 'Manrope', sans-serif;
-            font-weight: 800;
-            font-size: 0.95rem;
-            color: #1F2937;
-            margin: 0;
-            line-height: 1.3;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-        }
-
-        .product-price {
-            font-family: 'Manrope', sans-serif;
-            font-weight: 800;
-            font-size: 1.05rem;
-            color: #8A38F5;
-            margin-top: auto;
-        }
-
-        .btn-view-product {
-            width: 100%;
-            background: #F3E8FF;
-            color: #7E22CE;
-            border: none;
-            padding: 10px;
-            border-radius: 12px;
-            font-family: 'Manrope', sans-serif;
-            font-weight: 800;
-            font-size: 0.8rem;
-            cursor: pointer;
-            text-align: center;
-            text-decoration: none;
-            box-sizing: border-box;
-            display: block;
-            margin-top: 8px;
-            transition: background 0.15s ease, color 0.15s ease;
-            contain: layout style paint;
-        }
-
-        .btn-view-product:hover {
-            background: #8A38F5;
-            color: #FFFFFF;
-        }
-
-        /* Responsive improvements */
-        @media (max-width: 768px) {
-            .shop-container {
-                padding: 0 8px;
-            }
-
-            .banner-carousel-wrapper {
-                margin: 12px 8px 24px 8px;
-                border-radius: 16px;
-            }
-
-            .banner-slide {
-                height: clamp(140px, 35vw, 280px);
-            }
-
-            .category-nav-wrapper {
-                padding: 0 8px;
-                margin-bottom: 20px;
-            }
-
-            .cat-pill {
-                padding: 8px 16px;
-                font-size: 0.8rem;
-            }
-
-            .section-header {
-                padding: 0 8px;
-                margin-bottom: 12px;
-            }
-
-            .section-title {
-                font-size: clamp(1.1rem, 3vw, 1.4rem);
-            }
-
-            .scroller-wrapper {
-                margin-bottom: 28px;
-            }
-
-            .horizontal-scroller {
-                gap: 12px;
-                padding: 4px 8px 12px 8px;
-            }
-
-            .product-card {
-                flex: 0 0 clamp(180px, 50vw, 220px);
-            }
-
-            .product-image-box {
-                height: 160px;
-            }
-
-            .product-info {
-                padding: 12px;
-                gap: 4px;
-            }
-
-            .product-name {
-                font-size: 0.9rem;
-            }
-
-            .product-price {
-                font-size: 1rem;
-            }
-
-            .btn-view-product {
-                padding: 8px;
-                font-size: 0.75rem;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .banner-carousel-wrapper {
-                margin: 8px 4px 16px 4px;
-                border-radius: 12px;
-            }
-
-            .banner-slide {
-                height: clamp(120px, 45vw, 220px);
-            }
-
-            .category-pills {
-                gap: 6px;
-            }
-
-            .cat-pill {
-                padding: 6px 12px;
-                font-size: 0.75rem;
-            }
-
-            .section-title {
-                font-size: clamp(1rem, 4vw, 1.2rem);
-            }
-
-            .horizontal-scroller {
-                gap: 8px;
-                padding: 4px 4px 8px 4px;
-            }
-
-            .product-card {
-                flex: 0 0 clamp(160px, 60vw, 200px);
-            }
-
-            .product-image-box {
-                height: 140px;
-            }
-
-            .product-info {
-                padding: 10px;
-            }
-
-            .product-name {
-                font-size: 0.85rem;
-            }
-        }
-
-        /* Touch device optimizations */
-        @media (hover: none) and (pointer: coarse) {
-            .product-card:hover,
-            .btn-view-product:hover,
-            .cat-pill:hover {
-                transform: none;
-                box-shadow: none;
-                border-color: inherit;
-                background: inherit;
-                color: inherit;
-            }
-
-            .product-card:active,
-            .btn-view-product:active {
-                transform: scale(0.98);
-            }
-        }
-
-        /* Reduced motion support */
-        @media (prefers-reduced-motion: reduce) {
-            .banner-track {
-                transition: none;
-            }
-
-            .product-card,
-            .btn-view-product,
-            .cat-pill {
-                transition: none;
-            }
-        }
+        .catalog-page{--catalog-ink:#17314c;--catalog-blue:#b8e4f2;--catalog-accent:#8a38f5;font-family:Manrope,sans-serif;color:var(--catalog-ink);background:#fff}
+        .catalog-categories{width:100%;background:#c9edf7;background-image:repeating-linear-gradient(145deg,transparent 0 15px,rgba(255,255,255,.17) 15px 19px);padding:24px 18px}
+        .catalog-category-list{max-width:1000px;margin:auto;display:flex;justify-content:center;align-items:center;gap:clamp(22px,6vw,82px);overflow-x:auto}
+        .catalog-category-link{display:flex;min-width:94px;flex-direction:column;align-items:center;gap:8px;color:#153a67;text-align:center;text-decoration:none;font-size:.81rem;font-weight:800;line-height:1.2;text-transform:uppercase}
+        .catalog-category-icon{display:grid;width:54px;height:54px;place-items:center;border:2px solid currentColor;border-radius:50%;font-size:1.7rem;transition:transform .2s ease,background .2s ease}
+        .catalog-category-link:hover .catalog-category-icon{transform:translateY(-3px);background:rgba(255,255,255,.5)}
+        .catalog-shell{max-width:1480px;margin:auto;padding:28px clamp(18px,4vw,54px) 68px}
+        .catalog-breadcrumbs{display:flex;gap:10px;align-items:center;margin:10px 0 24px;color:#777e87;font-size:.88rem}
+        .catalog-breadcrumbs a{color:inherit;text-decoration:none}.catalog-breadcrumbs a:hover{color:var(--catalog-accent)}
+        .catalog-hero{position:relative;display:flex;min-height:260px;align-items:center;overflow:hidden;margin:0 0 38px;border-radius:18px;background:#310669;color:#fff}
+        .catalog-hero img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+        .catalog-hero:after{position:absolute;inset:0;background:linear-gradient(90deg,rgba(24,7,48,.85),rgba(24,7,48,.12));content:""}
+        .catalog-hero[data-layout=split] img{left:auto;width:55%}
+        .catalog-hero[data-layout=split]:after{background:linear-gradient(90deg,rgba(24,7,48,.94) 0%,rgba(24,7,48,.75) 47%,rgba(24,7,48,.06) 100%)}
+        .catalog-hero-copy{position:relative;z-index:1;width:min(680px,85%);padding:clamp(24px,5vw,54px)}
+        .catalog-hero-copy h1{margin:0 0 12px;font-size:clamp(2rem,4vw,3.3rem);font-weight:800;line-height:1.08}
+        .catalog-hero-copy p{margin:0 0 20px;font-size:1rem;line-height:1.7}
+        .catalog-hero-copy a{display:inline-block;padding:12px 18px;border-radius:10px;background:#8a38f5;color:#fff;font-weight:800;text-decoration:none}
+        .catalog-toolbar{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:14px;margin:12px 0 22px}
+        .catalog-toolbar h1{margin:0;color:#1d3044;font-size:clamp(1.5rem,3vw,2rem);font-weight:800}
+        .catalog-search{display:flex;width:min(100%,420px);gap:8px}
+        .catalog-search input{flex:1;min-width:0;padding:11px 14px;border:1px solid #dfe7ed;border-radius:10px;font:inherit}
+        .catalog-search button{padding:10px 17px;border:0;border-radius:10px;background:#173c68;color:#fff;font:inherit;font-weight:800}
+        .catalog-pills{display:flex;gap:9px;overflow-x:auto;margin:0 0 26px;padding:2px 0 8px}
+        .catalog-pills a{flex:0 0 auto;padding:9px 15px;border-radius:24px;background:#eef7fa;color:#23486c;font-size:.85rem;font-weight:700;text-decoration:none}
+        .catalog-pills a.active{background:#173c68;color:#fff}
+        .catalog-section{margin:28px 0 44px}
+        .catalog-section h2{margin-bottom:20px;color:#183454;font-size:1.25rem;font-weight:800}
+        .catalog-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:clamp(12px,2.4vw,30px)}
+        .catalog-card{min-width:0;text-align:center}
+        .catalog-card-image{position:relative;display:flex;min-height:clamp(160px,24vw,310px);align-items:center;justify-content:center;overflow:hidden;background:#fff}
+        .catalog-card-image img{width:100%;height:clamp(160px,24vw,310px);object-fit:contain;transition:transform .25s ease}
+        .catalog-card:hover .catalog-card-image img{transform:scale(1.045)}
+        .catalog-card-copy{padding:14px 8px 8px}
+        .catalog-card h3{margin:0 0 8px;color:#17314c;font-size:clamp(.85rem,1.2vw,1.03rem);font-weight:700;line-height:1.4}
+        .catalog-category-label{display:none}
+        .catalog-price{margin:0 0 7px;color:#7132bd;font-size:.97rem;font-weight:800}
+        .catalog-status{color:#707d88;font-size:.78rem}
+        .catalog-cta{display:inline-flex;margin-top:12px;padding:9px 15px;border:1px solid #ded5eb;border-radius:9px;color:#542487;font-size:.82rem;font-weight:800;text-decoration:none}
+        .catalog-cta:hover{border-color:#8a38f5;background:#f7f1ff}
+        .catalog-empty{padding:42px;border-radius:16px;background:#f7fafb;color:#645673;text-align:center}
+        .catalog-footer-gap{height:20px}
+        @media(max-width:850px){.catalog-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.catalog-category-list{justify-content:flex-start}}
+        @media(max-width:580px){.catalog-categories{padding:17px 12px}.catalog-category-list{gap:16px}.catalog-category-link{min-width:78px;font-size:.7rem}.catalog-category-icon{width:46px;height:46px;font-size:1.4rem}.catalog-shell{padding:18px 14px 46px}.catalog-hero{min-height:190px;margin-bottom:26px;border-radius:14px}.catalog-hero-copy{width:94%;padding:22px}.catalog-hero-copy p{font-size:.88rem}.catalog-toolbar{align-items:stretch;flex-direction:column}.catalog-search{width:100%}.catalog-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 8px}.catalog-card-image,.catalog-card-image img{height:clamp(145px,44vw,220px);min-height:145px}.catalog-card-copy{padding:10px 3px}.catalog-card h3{font-size:.86rem}.catalog-cta{padding:8px 10px;font-size:.75rem}}
     </style>
-</head>
-<body>
+@endpush
 
-    @include('partials.loader')
-    <input type="checkbox" id="menu-toggle" style="display: none;" autocomplete="off">
-    
-    <div class="page-wrapper" id="page-wrapper" style="background-color: #FFFFFF;">
-        @include('partials.header')
-
-        <div class="shop-container">
-            
-            <!-- 1. PROMOTIONAL PHOTO BANNER CAROUSEL (10px Side Margin Layout) -->
-            <div class="banner-carousel-wrapper">
-                <div class="banner-track" id="bannerTrack">
-                    <!-- Replace image paths with your created promotional banners -->
-                    <img src="{{ asset('images/banners/banner1.png') }}" alt="Special Offer" class="banner-slide" loading="eager" fetchpriority="high" onerror="this.src='https://via.placeholder.com/1200x350/8A38F5/FFFFFF?text=New+Dedication+Cakes'">
-                    <img src="{{ asset('images/banners/banner2.png') }}" alt="New Treats" class="banner-slide"  onerror="this.src='https://via.placeholder.com/1200x350/310669/FFFFFF?text=Freshly+Baked+Loaves'">
-                </div>
-                <div class="carousel-indicators">
-                    <div class="dot active" onclick="goToSlide(0)"></div>
-                    <div class="dot" onclick="goToSlide(1)"></div>
-                </div>
-            </div>
-
-            <!-- 2. QUICK CATEGORY FILTER PILLS -->
-            <div class="category-nav-wrapper">
-                <div class="category-pills">
-                    <a href="#all" class="cat-pill active">All Products</a>
-                    <a href="#new" class="cat-pill"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 6px;"><polyline points="22 7 13.41 15.59 9 11.18 4.41 15.75 2 13 20 7"></polyline></svg>New Arrivals</a>
-                    <a href="#cakes" class="cat-pill"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 6px;"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>Dedication Cakes</a>
-                    <a href="#loaves" class="cat-pill"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 6px;"><path d="M4 19h16"></path><path d="M9 3v2"></path><path d="M15 3v2"></path><path d="M8 19a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2"></path></svg>Loaves</a>
-                    <a href="#acetates" class="cat-pill"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 6px;"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path><path d="M12 8v8"></path><path d="M8 12h8"></path></svg>Acetates</a>
-                    <a href="#treats" class="cat-pill"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 6px;"><path d="M12 2a10 10 0 1 0 10 10"></path><path d="M16 8l4 4-4 4-4-4z"></path></svg>Treats & Choco Bars</a>
-                    <a href="#cupcakes" class="cat-pill"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 6px;"><path d="M12 3v18"></path><path d="M5 10h14"></path><path d="M5 14h14"></path><path d="M8 6a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2H8V6z"></path><path d="M7 19a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2z"></path></svg>Cupcakes</a>
-                </div>
-            </div>
-
-            <!-- 3. CATEGORY SCROLLER: NEW ARRIVALS & ORIGINALS -->
-            <div class="scroller-wrapper" id="new">
-                <div class="section-header">
-                    <h2 class="section-title">New & Originals</h2>
-                    <a href="#" class="section-link">View Category →</a>
-                </div>
-                <div class="horizontal-scroller">
-                    <!-- Sample Product Card -->
-                    <div class="product-card">
-                        <div class="product-image-box">
-                            <span class="badge-tag">NEW</span>
-                            <img src="{{ asset('images/products/" sample-cake.jpg') }}" alt="Special Cake" onerror="this.src='https://via.placeholder.com/240x180/F3E8FF/7E22CE?text=Dedication+Cake'">
-                        </div>
-                        <div class="product-info">
-                            <h3 class="product-name">Mango Bravo Dedication Cake</h3>
-                            <div class="product-price">₱650.00</div>
-                            <!-- Link directly to product details page later -->
-                            <a href="#" class="btn-view-product">View Product</a>
-                        </div>
-                    </div>
-
-                    <div class="product-card">
-                        <div class="product-image-box">
-                            <span class="badge-tag">ORIGINAL</span>
-                            <img src="{{ asset('images/products/" sample-loaf.jpg') }}" alt="Special Loaf" onerror="this.src='https://via.placeholder.com/240x180/F3E8FF/7E22CE?text=Special+Loaf'">
-                        </div>
-                        <div class="product-info">
-                            <h3 class="product-name">Ube Cheese Loaf Special</h3>
-                            <div class="product-price">₱180.00</div>
-                            <a href="#" class="btn-view-product">View Product</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 4. CATEGORY SCROLLER: DEDICATION CAKES -->
-            <div class="scroller-wrapper" id="cakes">
-                <div class="section-header">
-                    <h2 class="section-title">Dedication Cakes</h2>
-                    <a href="#" class="section-link">View All Cakes →</a>
-                </div>
-                <div class="horizontal-scroller">
-                    <div class="product-card">
-                        <div class="product-image-box">
-                            <img src="{{ asset('images/products/" choco-cake.jpg') }}" alt="Choco Fudge" onerror="this.src='https://via.placeholder.com/240x180/F3E8FF/7E22CE?text=Choco+Fudge'">
-                        </div>
-                        <div class="product-info">
-                            <h3 class="product-name">Rich Choco Fudge Dedication Cake</h3>
-                            <div class="product-price">₱580.00</div>
-                            <a href="#" class="btn-view-product">View Product</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 5. CATEGORY SCROLLER: TREATS & CHOCO BARS -->
-            <div class="scroller-wrapper" id="treats">
-                <div class="section-header">
-                    <h2 class="section-title">Treats & Choco Bars</h2>
-                    <a href="#" class="section-link">Explore Treats →</a>
-                </div>
-                <div class="horizontal-scroller">
-                    <div class="product-card">
-                        <div class="product-image-box">
-                            <span class="badge-tag">BESTSELLER</span>
-                            <img src="{{ asset('images/products/" bar.jpg') }}" alt="Choco Bar" onerror="this.src='https://via.placeholder.com/240x180/F3E8FF/7E22CE?text=Choco+Bar'">
-                        </div>
-                        <div class="product-info">
-                            <h3 class="product-name">Handcrafted Dark Choco Bar</h3>
-                            <div class="product-price">₱95.00</div>
-                            <a href="#" class="btn-view-product">View Product</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
+@section('content')
+<div class="catalog-page">
+    <nav class="catalog-categories" aria-label="Shop categories">
+        <div class="catalog-category-list">
+            @php($categoryIcons = ['roll' => '🥐', 'cake' => '🎂', 'cookie' => '🍪', 'package' => '🍬', 'wedding' => '💍'])
+            @forelse($categories as $category)
+                @php($iconKey = \Illuminate\Support\Str::lower($category))
+                @php($icon = collect($categoryIcons)->first(fn ($value, $key) => str_contains($iconKey, $key)) ?? '🍰')
+                <a class="catalog-category-link" href="{{ route('shop', ['category' => $category]) }}">
+                    <span class="catalog-category-icon" aria-hidden="true">{{ $icon }}</span>
+                    <span>{{ $category }}</span>
+                </a>
+            @empty
+                <span class="catalog-category-link"><span class="catalog-category-icon" aria-hidden="true">🍰</span><span>Freshly baked</span></span>
+            @endforelse
+            <a class="catalog-category-link" href="{{ route('shop') }}">
+                <span class="catalog-category-icon" aria-hidden="true">✦</span>
+                <span>More soon</span>
+            </a>
         </div>
-    </div>
+    </nav>
 
-    @include('partials.side-menu')
-    <script src="{{ asset('js/welcome.js') }}"></script>
-    <script>
-        // Banner Auto-Slide Logic
-        let currentSlide = 0;
-        const track = document.getElementById('bannerTrack');
-        const dots = document.querySelectorAll('.dot');
-        const totalSlides = dots.length;
+    <main class="catalog-shell">
+        <nav class="catalog-breadcrumbs" aria-label="Breadcrumb"><a href="{{ route('home') }}">Home</a><span>/</span><span aria-current="page">Shop</span></nav>
 
-        function goToSlide(index) {
-            currentSlide = index;
-            track.style.transform = `translateX(-${currentSlide * 100}%)`;
-            dots.forEach((dot, i) => {
-                dot.classList.toggle('active', i === currentSlide);
-            });
-        }
+        @if($banners->isNotEmpty())
+            @foreach($banners as $banner)
+                @php($bannerImage = $banner->image_path ? asset('storage/'.$banner->image_path) : null)
+                <section class="catalog-hero" data-layout="{{ $banner->layout }}" style="background:{{ $banner->background_color }};text-align:{{ $banner->alignment }}">
+                    @if($bannerImage)<img src="{{ $bannerImage }}" alt="" @if(!$loop->first)loading="lazy"@endif>@endif
+                    <div class="catalog-hero-copy" style="color:{{ $banner->text_color }};margin-left:{{ $banner->alignment === 'right' ? 'auto' : ($banner->alignment === 'center' ? 'auto' : '0') }};margin-right:{{ $banner->alignment === 'left' ? 'auto' : ($banner->alignment === 'center' ? 'auto' : '0') }}">
+                        <h1>{{ $banner->title }}</h1>
+                        @if($banner->body)<p>{{ $banner->body }}</p>@endif
+                        @if($banner->link_url && $banner->cta_label)<a href="{{ $banner->link_url }}">{{ $banner->cta_label }}</a>@endif
+                    </div>
+                </section>
+            @endforeach
+        @endif
 
-        if (totalSlides > 1) {
-            setInterval(() => {
-                currentSlide = (currentSlide + 1) % totalSlides;
-                goToSlide(currentSlide);
-            }, 5000);
-        }
+        <div class="catalog-toolbar">
+            <div><h1>Our products</h1><span class="catalog-status">{{ $products->count() }} {{ Str::plural('product', $products->count()) }} to discover</span></div>
+            <form class="catalog-search" action="{{ route('shop') }}" method="GET">
+                @if(request('category'))<input type="hidden" name="category" value="{{ request('category') }}">@endif
+                <input type="search" name="q" value="{{ request('q') }}" placeholder="Find a product" aria-label="Find a product">
+                <button type="submit">Search</button>
+            </form>
+        </div>
+        <nav class="catalog-pills" aria-label="Filter products by category">
+            <a class="{{ request('category') ? '' : 'active' }}" href="{{ route('shop', request()->except('category')) }}">All products</a>
+            @foreach($categories as $category)
+                <a class="{{ request('category') === $category ? 'active' : '' }}" href="{{ route('shop', array_merge(request()->except('category'), ['category' => $category])) }}">{{ $category }}</a>
+            @endforeach
+        </nav>
 
-        // Loader Dismissal Logic
-        document.addEventListener("DOMContentLoaded", function () {
-            const loader = document.getElementById("globalLoader");
-            if (loader) {
-                loader.classList.add("fade-out");
-                setTimeout(() => loader.remove(), 600);
-            }
-        });
-    </script>
-</body>
-</html>
+        @if($products->isEmpty())
+            <div class="catalog-empty">No products match your search right now.</div>
+        @else
+            @foreach($products->groupBy('category') as $category => $items)
+                <section class="catalog-section">
+                    <h2>{{ $category }}</h2>
+                    <div class="catalog-grid">
+                        @foreach($items as $product)
+                            @php($productImage = $product->image_url ? (str_starts_with($product->image_url, 'http') ? $product->image_url : asset('storage/'.$product->image_url)) : asset('images/logo.png'))
+                            <article class="catalog-card">
+                                <a class="catalog-card-image" href="{{ route('shop.product', $product->slug) }}" aria-label="View {{ $product->name }}">
+                                    <img src="{{ $productImage }}" alt="{{ $product->name }}" loading="lazy">
+                                </a>
+                                <div class="catalog-card-copy">
+                                    <h3>{{ $product->name }}</h3>
+                                    <div class="catalog-price">₱{{ number_format((float) $product->price, 2) }}</div>
+                                    <span class="catalog-status">{{ $product->stock_quantity > 0 && $product->stock_status !== 'Out of Stock' ? 'Available to order' : 'Currently unavailable' }}</span>
+                                    <a class="catalog-cta" href="{{ route('shop.product', $product->slug) }}">View product</a>
+                                </div>
+                            </article>
+                        @endforeach
+                    </div>
+                </section>
+            @endforeach
+        @endif
+    </main>
+    <div class="catalog-footer-gap"></div>
+    @include('partials.Footer')
+</div>
+@endsection

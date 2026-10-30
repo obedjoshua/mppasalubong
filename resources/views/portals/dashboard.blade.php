@@ -9,7 +9,10 @@
         <h1 class="portal-heading h2 mb-1">{{ ucfirst($portal) }} dashboard</h1>
         <p class="portal-subtitle mb-0">Live service activity and platform overview.</p>
     </div>
-    <div class="portal-pill"><span class="portal-live-dot"></span>Updated <time id="portal-updated-at">{{ \Illuminate\Support\Carbon::parse($liveData['updatedAt'])->format('H:i:s') }}</time></div>
+    <div class="d-flex flex-wrap gap-2 align-items-center">
+        <a class="portal-pill text-decoration-none" href="{{ route('admin.store.index') }}">Shop content</a>
+        <div class="portal-pill"><span class="portal-live-dot"></span>Updated <time id="portal-updated-at">{{ \Illuminate\Support\Carbon::parse($liveData['updatedAt'])->format('H:i:s') }}</time></div>
+    </div>
 </div>
 
 <div class="row g-3 mb-4">
@@ -128,6 +131,9 @@
             <div class="list-group list-group-flush">
                 <a href="{{ route('admin.users.index') }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-3">
                     <span><strong class="d-block">User access</strong><small class="portal-muted">Manage accounts and roles</small></span><span class="portal-pill">{{ number_format($userCounts['all']) }}</span>
+                </a>
+                <a href="{{ route('admin.store.index') }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-3">
+                    <span><strong class="d-block">Shop content</strong><small class="portal-muted">Manage products and hero promotions</small></span><span class="portal-pill">Open editor</span>
                 </a>
                 <a href="{{ route('developer.posts.index') }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-3">
                     <span><strong class="d-block">Post review</strong><small class="portal-muted">Moderate community content</small></span><span class="portal-pill">{{ number_format($pendingPosts) }} hidden</span>

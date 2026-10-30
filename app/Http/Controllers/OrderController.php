@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\OrderTicket;
 use App\Models\OrderTicketItem;
+use App\Models\Product;
 use App\Services\QrCodeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -41,9 +42,17 @@ class OrderController extends Controller
         return view('tickets.index');
     }
 
-    public function create()
+    public function create(Request $request)
     {
-        return view('orders.create');
+        $catalogProduct = Product::query()
+            ->where('slug', $request->query('product'))
+            ->where('is_active', true)
+            ->first();
+
+        return view('orders.create', [
+            'catalogProduct' => $catalogProduct,
+            'catalogQuantity' => max(1, min(99, (int) $request->query('quantity', 1))),
+        ]);
     }
 
     public function store(Request $request)

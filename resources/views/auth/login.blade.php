@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+"<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -129,10 +129,12 @@
             }
 
             const loader = document.getElementById("globalLoader");
-            const startTime = Date.now();
+            const startTime = Date.now(); 
 
             function hideLoader() {
-                if (loader) {
+                if (loader) { 
+
+                    
                     loader.classList.add("fade-out");
                     setTimeout(() => loader.remove(), 600);
                 }
