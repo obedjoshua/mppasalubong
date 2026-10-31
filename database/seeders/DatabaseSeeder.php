@@ -50,6 +50,7 @@ class DatabaseSeeder extends Seeder
 
         // Call other seeders
         $this->call([
+            ClassicYemaCheeseCakeSeeder::class,
             BadgeSeeder::class,
             StaffUserSeeder::class,
             PortalAccountSeeder::class,

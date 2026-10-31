@@ -1,4 +1,4 @@
-<header class="header">
+﻿<header class="header">
     <a href="{{ route('home') }}" wire:navigate class="header-left" style="text-decoration: none; color: inherit;">
         <img src="{{ asset('images/logo.png') }}" alt="Masaganang Pagpapala Logo" class="logo-img">
         <div class="logo-text-stacked">
@@ -30,13 +30,19 @@
             </a>
         @endauth
 
-        <div class="icon-btn" title="Cart">
+        <a href="{{ route('cart') }}" class="icon-btn cart-link" title="Cart" style="text-decoration: none; color: inherit; position: relative;">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 65%; height: 65%;">
                 <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
                 <line x1="3" y1="6" x2="21" y2="6"></line>
                 <path d="M16 10a4 4 0 0 1-8 0"></path>
             </svg>
-        </div>
+            @if(Auth::check())
+                @php $cartCount = count(session('cart', [])); @endphp
+                @if($cartCount > 0)
+                    <span id="cart-count" class="cart-badge" style="position: absolute; top: -6px; right: -6px; background: var(--purple-main); color: white; font-size: 10px; font-weight: 800; min-width: 18px; height: 18px; border-radius: 9px; display: flex; align-items: center; justify-content: center; padding: 0 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">{{ $cartCount }}</span>
+                @endif
+            @endif
+        </a>
         
         <button class="contact-btn">
             CONTACT US
