@@ -51,7 +51,13 @@ return [
         'api_key' => env('GROQ_API_KEY'),
     ],
 
-    'firebase' => [
+        'paymongo' => [
+        'secret_key' => env('PAYMONGO_SECRET_KEY'),
+        'public_key' => env('PAYMONGO_PUBLIC_KEY'),
+        'webhook_secret' => env('PAYMONGO_WEBHOOK_SECRET'),
+    ],
+
+'firebase' => [
         'api_key' => env('FIREBASE_API_KEY'),
         'auth_domain' => env('FIREBASE_AUTH_DOMAIN'),
         'project_id' => env('FIREBASE_PROJECT_ID'),
@@ -61,3 +67,5 @@ return [
     ],
 
 ];
+
+

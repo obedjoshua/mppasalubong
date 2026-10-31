@@ -181,6 +181,30 @@ Route::middleware(['auth', 'portal:developer'])
         Route::put('/posts/{post}/visibility', [PortalController::class, 'updatePostVisibility'])->name('posts.visibility');
     });
 
+// Cart & Checkout Routes
+Route::middleware(['auth'])->group(function () {
+    Route::get('/cart', [App\Http\Controllers\CheckoutController::class, 'cart'])->name('cart');
+    Route::post('/cart/add', [App\Http\Controllers\CheckoutController::class, 'addToCart'])->name('cart.add');
+    Route::post('/cart/update', [App\Http\Controllers\CheckoutController::class, 'updateCart'])->name('cart.update');
+    Route::post('/cart/remove', [App\Http\Controllers\CheckoutController::class, 'removeFromCart'])->name('cart.remove');
+    Route::get('/checkout', [App\Http\Controllers\CheckoutController::class, 'checkout'])->name('checkout');
+    Route::post('/checkout/process', [App\Http\Controllers\CheckoutController::class, 'processCheckout'])->name('checkout.process');
+    Route::get('/checkout/success', [App\Http\Controllers\CheckoutController::class, 'success'])->name('checkout.success');
+    Route::get('/checkout/cancel', [App\Http\Controllers\CheckoutController::class, 'cancel'])->name('checkout.cancel');
+});
+
+Route::post('/webhook/paymongo', [App\Http\Controllers\CheckoutController::class, 'webhook'])->name('paymongo.webhook');
+
+// Admin Purchase Management Routes
+Route::middleware(['auth', 'portal:admin'])
+    ->prefix('admin')
+    ->name('admin.')
+    ->group(function () {
+        Route::get('/purchases', [App\Http\Controllers\PortalController::class, 'purchases'])->name('purchases.index');
+        Route::get('/purchases/{purchase}', [App\Http\Controllers\PortalController::class, 'showPurchase'])->name('purchases.show');
+        Route::put('/purchases/{purchase}/status', [App\Http\Controllers\PortalController::class, 'updatePurchaseStatus'])->name('purchases.status');
+    });
+
 // API & Community Public Routes
 Route::get('/guest/order-prompt', function () {
     return view('guest.order-prompt');
@@ -190,3 +214,4 @@ Route::post('/api/vision/extract-colors', [VisionController::class, 'extractColo
     ->middleware('api.metrics')->name('vision.extract');
 Route::get('/community', [CommunityController::class, 'index'])->name('community.index');
 Route::get('/community/user/{id}', [CommunityController::class, 'getUserProfileJson'])->name('community.user.profile');
+
