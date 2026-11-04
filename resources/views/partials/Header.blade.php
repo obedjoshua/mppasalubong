@@ -1,4 +1,4 @@
-﻿<header class="header">
+<header class="header">
     <a href="{{ route('home') }}" wire:navigate class="header-left" style="text-decoration: none; color: inherit;">
         <img src="{{ asset('images/logo.png') }}" alt="Masaganang Pagpapala Logo" class="logo-img">
         <div class="logo-text-stacked">
