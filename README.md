@@ -1,74 +1,235 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Capstone Project Technical Summary & Deployment Guide
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+## Project Title
+**AI-Driven E-Commerce Platform with Visual Product Recognition and Conversational Support for Masaganang Pagpapala Pasalubong**
 
-## About Laravel
+## Capstone Development Team
+* **Joshua, Obed Daniel**
+* **Briones, Mark Justine L.**
+* **Caño, Aaron DC.**
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+---
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## System Overview & Architecture
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+The **Masaganang Pagpapala Pasalubong AI-Driven E-Commerce Platform** is an enterprise-grade multi-branch web application engineered to digitize store operations and streamline customer transactions across the Salacot and San Jose physical store branches. 
 
-## Learning Laravel
+The application utilizes a modular Model-View-Controller (MVC) architecture powered by Laravel and MariaDB. It integrates visual product parsing via Vision-Language Models (VLM), real-time conversational assistance, cloud object storage, digital payment processing, and web-based QR ticket verification.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+```
++--------------------------------------------------------------------------------------------------+
+|                                    SYSTEM ARCHITECTURE                                           |
++--------------------------------------------------------------------------------------------------+
+|                                                                                                  |
+|   +-------------------+    +--------------------+    +--------------------+    +-----------------+   |
+|   |  Customer Device  |    |  Groq Vision API   |    |  OpenRouter AI     |    | Cloudflare R2   |   |
+|   | (Web Browser UI)  |    |     (Qwen VLM)     |    |   (Nemotron 3)     |    | (Bucket Store)  |   |
+|   +---------+---------+    +---------+----------+    +---------+----------+    +--------+--------+   |
+|             │                        │                         │                        │        |
+|             ▼                        ▼                         ▼                        ▼        |
+|   +-------------------------------------------------------------------------------------------+  |
+|   |                              Laravel MVC Backend Engine                                   |  |
+|   |   (Authentication, Order Intake, Inventory Engine, QR Tokenizer, Distance Calculator)      |  |
+|   +---------------------------------------------+---------------------------------------------+  |
+|                                                 │                                                |
+|                                                 ▼                                                |
+|                                +----------------------------------+                              |
+|                                |   MariaDB Relational Database    |                              |
+|                                +----------------------------------+                              |
+|                                                                                                  |
++--------------------------------------------------------------------------------------------------+
+```
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+---
 
-## Laravel Sponsors
+## Comprehensive System Features
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+### 1. Customer-Facing Portal
 
-### Premium Partners
+* **AI Visual Custom Cake Parser:**
+  * Allows customers to upload cake inspiration photos directly to Cloudflare R2 object storage.
+  * Leverages the **Groq Vision API (Qwen VLM)** to analyze uploaded images, extracting design parameters, estimated tiers, color palettes, and theme options into structured JSON data to auto-fill ticket requests.
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+* **Conversational AI Customer Support:**
+  * 24/7 automated assistant powered by **Nvidia Nemotron 3 Ultra** via OpenRouter.
+  * Handles natural language inquiries regarding store products, operating hours, custom cake policies, and branch locations.
+  * Provides seamless escalation links to Facebook Messenger when human staff intervention is required.
 
-## Contributing
+* **Store Locator & Branch Selector:**
+  * Integrated with **MapLibre GL** and **OpenFreeMap** to render interactive store location maps.
+  * Calculates distance between customer coordinates and selected pickup branches using an internal Haversine distance engine.
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+* **Digital Checkout & Payment Gateway:**
+  * Shopping cart management for standard bakery catalog items and approved custom cake tickets.
+  * Direct payment authorization integration via **PayMongo**, supporting GCash, Maya, and credit/debit cards.
 
-## Code of Conduct
+* **Encrypted QR Order Claim Tickets:**
+  * Generates unique Base64-encoded digital order tickets and encrypted SVG QR code tokens upon checkout completion.
+  * Serves as proof of payment and claim ticket for in-store pickup.
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+* **Community Engagement Feed:**
+  * Interactive customer feed allowing users to share custom cake reviews and post photos.
+  * Features emoji reaction handling (`Reaction`), comments (`Comment`), and an automated milestone badge unlock system (`Badge`).
 
-## Security Vulnerabilities
+---
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+### 2. Store & Branch Operations Module
 
-## License
+* **Multi-Branch Inventory Management:**
+  * Real-time inventory tracking synchronized across physical store branches (Salacot and San Jose).
+  * System-logged inter-branch stock transfers (`BRANCH_STOCK_TRANSFERS`) and automated item deductions upon successful online or walk-in purchases.
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
-# Admin and developer portals
+* **Kitchen Scheduling & Production Board:**
+  * Production dashboard for bakery staff to review AI-extracted custom cake design specifications.
+  * Enables staff to adjust tier pricing, send modification notes to customers, lock kitchen preparation time slots, and update fulfillment states (`In Production` $\rightarrow$ `Ready for Pickup`).
 
-Portal access is granted only by the user's `role` (`admin`, `developer`, or `staff`), never by email domain. Administrators and developers have equal portal and staff-operation privileges: both can manage user roles at `/admin/users`, inspect instrumented API request metrics and traffic, moderate community posts, and view database/cache health and read-only Git status.
+* **Counter Pickup & QR Verification Web Tool:**
+  * Integrated web scanner tool allowing store staff to scan customer digital QR tickets using device cameras.
+  * Instantly verifies QR token validity, confirms payment status, updates order fulfillment to `Completed`, and generates point-of-sale (POS) receipt records.
 
-API metrics currently cover the instrumented color-extraction endpoint only. No API-key management system or external connection integration exists in this application, so the portal does not claim to manage those. Request bodies and client IP addresses are not retained. Git support runs only the fixed, read-only `git status --short --branch` command.
+* **Daily Staff & Shift Cash Drawer Reconciliation:**
+  * Enforces operational logging for employee clock-ins, shift balances, and opening/closing cash drawer reconciliations (`DAILY_STAFF_LOGS`).
 
-Set `PORTAL_ADMIN_SEED_PASSWORD` and `PORTAL_DEVELOPER_SEED_PASSWORD` in the ignored local `.env` file; the emails default to `admin@demo.local` and `developer@demo.local`. The portal seeder creates missing accounts but never resets the password of an existing account when seeding again, so their credentials remain stable. Keep these unique passwords in a password manager. If either account does not exist and its password is unset, the seeder skips it and writes a warning. Run `php artisan db:seed --class="Database\Seeders\PortalAccountSeeder"` to create missing portal accounts.
+* **Administrative Management & Analytics:**
+  * Access-controlled administrative portal for catalog modification, tier pricing management, notification API token configuration (Brevo SMS and Mailjet Email), and multi-branch sales analytics.
 
-## Shop catalog and promotions
+---
 
-Administrators and developers can manage public products and promotional banners at `/admin/store` (also linked from either portal dashboard). Product changes use the existing `products` table and retain its slug, category, price, description, stock, and attributes fields; removed products are soft-deleted. Product highlights and extra gallery image paths are stored in the existing `attributes` JSON field. Banner copy is plain text, with validated image, link, color, alignment, and layout controls; editor content is never interpreted as HTML, CSS, or JavaScript.
+## Technical Stack
 
-Apply the banner table migration with `php artisan migrate`. Uploaded product and banner images use Laravel's `public` storage disk. For local/public URL serving, run `php artisan storage:link` once after deployment and ensure `storage/app/public` is writable. Existing product image URLs remain supported.
+| Domain | Technology / Tool |
+| :--- | :--- |
+| **Backend Architecture** | Laravel (PHP MVC Framework) |
+| **Database Management** | MariaDB / MySQL |
+| **Frontend UI** | Blade Templates, Tailwind CSS, JavaScript (ES6) |
+| **Visual AI Recognition** | Groq Vision API (Qwen VLM Model) |
+| **Conversational AI** | OpenRouter API (Nvidia Nemotron 3 Ultra Model) |
+| **Object Cloud Storage** | Cloudflare R2 Storage |
+| **Payment Gateway** | PayMongo API (GCash, Maya, Cards) |
+| **Mapping Engine** | MapLibre GL / OpenFreeMap |
+| **Notification Services** | Brevo SMS API, Mailjet Email API |
+| **Local Offline Caching** | IndexedDB Service Workers |
 
-Public product detail pages use `/shop/{slug}`. Chatbot integrations can query `GET /shop/products/lookup?q=...&category=...`; the response includes public catalog details, availability, stable slug, and canonical product URL, and never includes internal stock records or user data.
+---
+
+## System Setup & Installation Guide
+
+### Prerequisites
+Ensure your local development environment or server has the following installed:
+* **PHP** $\ge 8.2$ (with `pdo`, `mbstring`, `openssl`, `curl`, `gd`, `xml` extensions enabled)
+* **Composer** (PHP Dependency Manager)
+* **Node.js** ($\ge 18.x$) & **NPM**
+* **MariaDB** ($\ge 10.4$) or **MySQL** ($\ge 8.0$)
+
+---
+
+### Step-by-Step Installation Instructions
+
+#### 1. Repository Clone & Dependency Installation
+Clone the repository and install PHP and Node.js dependencies:
+
+```bash
+# Clone the repository
+git clone https://github.com/your-repo/masaganang-pagpapala-platform.git
+cd masaganang-pagpapala-platform
+
+# Install PHP dependencies via Composer
+composer install
+
+# Install Node modules
+npm install
+```
+
+#### 2. Environment Configuration
+Create your environment variable configuration file:
+
+```bash
+# Copy the example environment file
+cp .env.example .env
+
+# Generate application key
+php artisan key:generate
+```
+
+Configure your `.env` file credentials:
+
+```ini
+APP_NAME="Masaganang Pagpapala E-Commerce"
+APP_ENV=local
+APP_KEY=
+APP_DEBUG=true
+APP_URL=http://localhost:8000
+
+# Database Configuration
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=masaganang_pagpapala_db
+DB_USERNAME=root
+DB_PASSWORD=
+
+# Cloudflare R2 Object Storage Credentials
+AWS_ACCESS_KEY_ID=your_cloudflare_r2_access_key
+AWS_SECRET_ACCESS_KEY=your_cloudflare_r2_secret_key
+AWS_DEFAULT_REGION=us-east-1
+AWS_BUCKET=masaganang-media-bucket
+AWS_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
+AWS_USE_PATH_STYLE_ENDPOINT=true
+
+# AI Service API Keys
+GROQ_VISION_API_KEY=gsk_your_groq_vision_key
+OPENROUTER_API_KEY=sk-or-v1-your_openrouter_key
+
+# PayMongo Payment Credentials
+PAYMONGO_PUBLIC_KEY=pk_test_your_public_key
+PAYMONGO_SECRET_KEY=sk_test_your_secret_key
+
+# Third-Party Notification APIs
+BREVO_SMS_API_KEY=your_brevo_key
+MAILJET_API_KEY=your_mailjet_key
+MAILJET_SECRET_KEY=your_mailjet_secret
+```
+
+#### 3. Database Migration & Seeding
+Create the database in MariaDB/MySQL (`masaganang_pagpapala_db`), then execute database migrations and seed initial administrative accounts and branch locations:
+
+```bash
+# Run database migrations and seeders
+php artisan migrate --seed
+```
+
+#### 4. Storage Link Symlink
+Create the public storage symlink for uploaded assets:
+
+```bash
+php artisan storage:link
+```
+
+#### 5. Compile Assets & Run Server
+Run the Vite development server alongside the Laravel local development server:
+
+```bash
+# Compile frontend assets
+npm run dev
+
+# Start Laravel development server (in a separate terminal tab)
+php artisan serve
+```
+
+Access the application at `http://localhost:8000`.
+
+---
+
+## Verification & Deployment Commands
+
+To run quality and environment verification checks prior to cloud deployment:
+
+```bash
+# Run application route and configuration caching
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+
+# Clear cached configuration during debugging
+php artisan optimize:clear
+```
