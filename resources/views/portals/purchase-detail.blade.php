@@ -1,4 +1,4 @@
-﻿@extends('layouts.portal')
+@extends('layouts.portal')
 
 @section('title', 'Purchase #' . $purchase->id)
 

@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Masaganang Pagpapala Pasalubong')</title>
 
     <!-- Preload critical fonts for faster text rendering -->
@@ -16,12 +17,45 @@
     <link rel="preload" href="{{ asset('css/welcome.css') }}" as="style">
     <link rel="preload" href="{{ asset('css/loader.css') }}" as="style">
 
-    <!-- Load CSS with print media trick for non-blocking -->
-    <link rel="stylesheet" href="{{ asset('css/welcome.css') }}" media="print" onload="this.media='all'">
-    <link rel="stylesheet" href="{{ asset('css/loader.css') }}" media="print" onload="this.media='all'">
-    <link rel="icon" type="image/x-icon" href="{{ asset('images/logo.png') }}">    
-    {{-- Inline critical loader CSS to prevent flash of unstyled loader --}}
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="{{ asset('css/welcome.css') }}?v=3">
+    <link rel="stylesheet" href="{{ asset('css/loader.css') }}">
+    <link rel="icon" type="image/x-icon" href="{{ asset('images/logo.png') }}">
+
     <style>
+        html {
+            margin: 0 !important;
+            padding: 0 !important;
+            height: 100%;
+        }
+
+        body {
+            margin: 0 !important;
+            padding: 0 !important;
+            min-height: 100vh;
+            background-color: #8a38f5 !important;
+            display: flow-root !important;
+        }
+
+        #page-wrapper {
+            margin-top: 0 !important;
+            padding-top: 0 !important;
+            position: relative;
+            font-size: 0 !important;
+            line-height: 0 !important;
+        }
+
+        #page-wrapper > * {
+            font-size: 1rem !important;
+            line-height: normal !important;
+        }
+
+        #page-wrapper > .header,
+        #page-wrapper > header {
+            top: 0 !important;
+            margin-top: 0 !important;
+        }
+
         .loader-container {
             position: fixed;
             top: 0;
@@ -56,7 +90,6 @@
         .loader-container.fade-out { opacity: 0; visibility: hidden; }
     </style>
 
-
     @stack('styles')
 
     <!-- Register Service Worker for offline capability -->
@@ -83,9 +116,7 @@
         @include('partials.header')
 
         @yield('content')
-
     </div>
-    
     
     @include('partials.side-menu')
     
