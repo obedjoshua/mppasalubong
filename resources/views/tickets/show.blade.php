@@ -5,10 +5,64 @@
 @push('styles')
     <link rel="preload" href="{{ asset('css/tickets-show.css') }}" as="style">
     <link rel="stylesheet" href="{{ asset('css/tickets-show.css') }}" media="print" onload="this.media='all'">
+    <style>
+        .lottie-review-banner {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            background: #fff8f0;
+            border: 1px solid #fed7aa;
+            border-left: 5px solid #f97316;
+            padding: 16px 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+        .lottie-box {
+            width: 80px;
+            height: 80px;
+            flex-shrink: 0;
+        }
+        .review-info-content {
+            flex: 1;
+        }
+        .review-info-content h4 {
+            margin: 0 0 4px 0;
+            color: #9a3412;
+            font-size: 1.05rem;
+            font-family: 'Recoleta-Bold', serif;
+        }
+        .review-info-content p {
+            margin: 0 0 10px 0;
+            font-size: 0.875rem;
+            color: #431407;
+            line-height: 1.4;
+        }
+        .btn-cancel-request {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #ffffff;
+            color: #dc2626;
+            border: 1px solid #fca5a5;
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 0.825rem;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+        .btn-cancel-request:hover {
+            background: #fef2f2;
+            border-color: #ef4444;
+        }
+    </style>
 @endpush
 
 @push('scripts')
-    <!-- Register Service Worker for offline capability -->
+    <!-- Lottie Web Player -->
+    <script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script>
+
+    <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
@@ -34,23 +88,58 @@
         <span style="font-size: 0.85rem; color: #6b21a8; font-weight: bold;">Order Ticket View</span>
     </div>
 
-    <div class="notice-banner">
-        <div style="font-size: 1.3rem; line-height: 1;">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 24px; height: 24px;">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-            </svg>
+    @if(session('success'))
+        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; font-size: 0.9rem; font-weight: bold;">
+            {{ session('success') }}
         </div>
-        <div class="notice-content">
-            <strong>Inquiry Received!</strong>
-            @if($ticket->preferred_notification_channel === 'messenger')
-                <p>We've logged your custom order ticket. Updates will be sent directly to your <strong>Messenger</strong> inbox.</p>
-            @else
-                <p>We've logged your custom order ticket. Notifications regarding price approval will be sent via <strong>Email ({{ $ticket->customer_email ?? 'your email' }})</strong> and <strong>SMS</strong>.</p>
-            @endif
-        </div>
-    </div>
+    @endif
 
-    @if(session('just_submitted') || true)
+    {{-- UNDER REVIEW BANNER WITH LOTTIE & CANCEL REQUEST BUTTON --}}
+    @if(in_array(strtolower($ticket->status), ['under review', 'in review', 'review mode']))
+        <div class="lottie-review-banner">
+            <div class="lottie-box">
+                <lottie-player 
+                    src="https://assets10.lottiefiles.com/packages/lf20_mbe45w62.json" 
+                    background="transparent" 
+                    speed="1" 
+                    style="width: 100%; height: 100%;" 
+                    loop 
+                    autoplay>
+                </lottie-player>
+            </div>
+            <div class="review-info-content">
+                <h4>Ticket Under Staff Review</h4>
+                <p>Our bakery staff is currently auditing your custom order details and calculating your official price quote. Editing is locked while in review.</p>
+                <a href="{{ route('orders.cancel-request.form', $ticket->id) }}" class="btn-cancel-request">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="15" y1="9" x2="9" y2="15"></line>
+                        <line x1="9" y1="9" x2="15" y2="15"></line>
+                    </svg>
+                    Request Ticket Cancellation
+                </a>
+            </div>
+        </div>
+    @else
+        <div class="notice-banner">
+            <div style="font-size: 1.3rem; line-height: 1;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 24px; height: 24px;">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                </svg>
+            </div>
+            <div class="notice-content">
+                <strong>Inquiry Received!</strong>
+                @if($ticket->preferred_notification_channel === 'messenger')
+                    <p>We've logged your custom order ticket. Updates will be sent directly to your <strong>Messenger</strong> inbox.</p>
+                @else
+                    <p>We've logged your custom order ticket. Notifications regarding price approval will be sent via <strong>Email ({{ $ticket->customer_email ?? 'your email' }})</strong> and <strong>SMS</strong>.</p>
+                @endif
+            </div>
+        </div>
+    @endif
+
+    {{-- DASHBOARD REDIRECT PROMPT: ONLY SHOWN IMMEDIATELY AFTER CREATING A TICKET --}}
+    @if(session('just_submitted'))
         <div class="dashboard-redirect-prompt">
             <div class="prompt-text">
                 <strong>Need to make edits or changes to your inquiry?</strong>
@@ -66,15 +155,15 @@
     @php
         $pinnedPreviewImage = null;
 
-        foreach ($ticket->items as$item) {
-            $pinnedPreviewImage =$item->image_data 
-                ?? $item->r2_url 
-                ?? $item->reference_image_path 
-                ?? ($item->custom_options['reference_image'] ?? null);
-
-            if ($pinnedPreviewImage) {
+        foreach ($ticket->items as $item) {
+            $pinnedPreviewImage = $item->image_url;
+            if ($pinnedPreviewImage && $pinnedPreviewImage !== asset('images/mascot-envelope.png')) {
                 break;
             }
+        }
+        
+        if (!$pinnedPreviewImage && $ticket->items->count() > 0) {
+            $pinnedPreviewImage = $ticket->items->first()->image_url;
         }
     @endphp
 
@@ -103,15 +192,18 @@
                             </svg>
 
                             <div class="polaroid-img-box">
-                                <img src="{{ $pinnedPreviewImage }}" alt="Ref Image" class="polaroid-img"  />
+                                <img src="{{ $pinnedPreviewImage }}" 
+                                     alt="Ref Image" 
+                                     class="polaroid-img" 
+                                     onerror="this.onerror=null; this.src='{{ asset('images/mascot-envelope.png') }}';" />
                             </div>
                             <div class="polaroid-caption">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 4px;">
-                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                <circle cx="12" cy="10" r="3"></circle>
-            </svg>
-            Ref Image
-        </div>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 4px;">
+                                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                                    <circle cx="12" cy="10" r="3"></circle>
+                                </svg>
+                                Ref Image
+                            </div>
                         </div>
                     </div>
                 @endif
@@ -152,7 +244,7 @@
                     <strong style="font-family: 'Recoleta-Bold', serif;">Pickup Time:</strong>
                     <span>{{ $ticket->pickup_time }}</span>
 
-                    @if($ticket->location_address &&$ticket->location_address !== 'TBD')
+                    @if($ticket->location_address && $ticket->location_address !== 'TBD')
                         <strong style="font-family: 'Recoleta-Bold', serif;">Location:</strong>
                         <span>{{ $ticket->location_address }}</span>
                     @endif
@@ -167,7 +259,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach($ticket->items as $index =>$item)
+                        @foreach($ticket->items as $index => $item)
                             <tr style="border-bottom: 1px solid #e2e8f0;">
                                 <td>{{ $index + 1 }}</td>
                                 <td>
@@ -179,24 +271,25 @@
                     </tbody>
                 </table>
 
-                @if(isset($isDashboardView) && $isDashboardView && in_array(strtolower($ticket->status), ['pending staff review', 'pending']))
+                {{-- EDIT & DELETE BUTTONS: ONLY ACTIVE WHEN NOT IN REVIEW MODE --}}
+                @if(in_array(strtolower($ticket->status), ['pending staff review', 'pending']))
                     <div style="display: flex; gap: 10px; margin-top: 14px; padding-top: 10px; border-top: 1px dashed #e2e8f0;">
                         <a href="{{ route('orders.edit', $ticket->id) }}" style="flex: 1; text-align: center; background: #f3e8ff; color: #7e22ce; padding: 8px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 0.825rem;">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 4px;">
-                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                        </svg>
-                        Edit Inquiry
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                            </svg>
+                            Edit Inquiry
                         </a>
                         <form action="{{ route('orders.destroy', $ticket->id) }}" method="POST" style="flex: 1;" onsubmit="return confirm('Are you sure you want to cancel and delete this order inquiry?');">
                             @csrf
                             @method('DELETE')
                             <button type="submit" style="width: 100%; background: #fef2f2; color: #dc2626; border: 1px solid #fca5a5; padding: 8px; border-radius: 6px; font-weight: bold; font-size: 0.825rem; cursor: pointer;">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 4px;">
-                            <polyline points="3 6 5 6 21 6"></polyline>
-                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                        </svg>
-                        Delete Ticket
+                                    <polyline points="3 6 5 6 21 6"></polyline>
+                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                </svg>
+                                Delete Ticket
                             </button>
                         </form>
                     </div>
@@ -232,10 +325,10 @@
                         <span class="expanded-detail-label">Customer Location:</span>
                         <span class="expanded-detail-value">{{ $ticket->location_address ?? 'Store Pickup' }}</span>
                     </div>
-                    @if($ticket->customer_latitude &&$ticket->customer_longitude)
+                    @if($ticket->customer_latitude && $ticket->customer_longitude)
                     <div class="expanded-detail-row">
                         <span class="expanded-detail-label">Pinned Coordinates:</span>
-                        <span class="expanded-detail-value">{{ $ticket->customer_latitude }}, {{$ticket->customer_longitude }}</span>
+                        <span class="expanded-detail-value">{{ $ticket->customer_latitude }}, {{ $ticket->customer_longitude }}</span>
                     </div>
                     @endif
                     @if($ticket->calculated_distance_km)
@@ -246,18 +339,18 @@
                     @endif
 
                     <div class="expanded-section-title" style="margin-top: 10px;">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px; vertical-align: middle; margin-right: 6px;">
-                <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
-                <path d="M2 17l10 5 10-5"></path>
-                <path d="M2 12l10 5 10-5"></path>
-            </svg>
-            Customization Breakdown
-        </div>
-                    @foreach($ticket->items as $index =>$item)
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px; vertical-align: middle; margin-right: 6px;">
+                            <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                            <path d="M2 17l10 5 10-5"></path>
+                            <path d="M2 12l10 5 10-5"></path>
+                        </svg>
+                        Customization Breakdown
+                    </div>
+                    @foreach($ticket->items as $index => $item)
                         <div style="margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px dashed #cbd5e1;">
-                            <strong style="font-size: 0.8rem; color: #1e293b;">Item #{{ $index + 1 }}: {{ ucfirst(str_replace('_', ' ',$item->item_type)) }}</strong>
+                            <strong style="font-size: 0.8rem; color: #1e293b;">Item #{{ $index + 1 }}: {{ ucfirst(str_replace('_', ' ', $item->item_type)) }}</strong>
                             @if(!empty($item->custom_options))
-                                @foreach($item->custom_options as $key =>$value)
+                                @foreach($item->custom_options as $key => $value)
                                     @if(!in_array($key, ['reference_image', 'custom_tag_path']) && is_string($value))
                                         <div class="expanded-detail-row">
                                             <span class="expanded-detail-label">{{ ucfirst(str_replace('_', ' ', $key)) }}:</span>
@@ -276,11 +369,11 @@
 
             <div class="ticket-stub-section">
                 @php
-                    $fallbackQrUrl =$qrData['fallback_url'] ?? '';
+                    $fallbackQrUrl = $qrData['fallback_url'] ?? '';
                 @endphp
                 <div class="qr-wrapper-block">
                     <div class="qr-container">
-                        @if(isset($qrData) &&$qrData['mode'] === 'inline_svg')
+                        @if(isset($qrData) && $qrData['mode'] === 'inline_svg')
                             {!! $qrData['content'] !!}
                         @else
                             <img id="ticketQrImage" 
@@ -317,57 +410,39 @@
 
         {{-- TAB NAVIGATION HEADER --}}
         <div class="modal-tabs-header">
-            @foreach($ticket->items as $idx =>$item)
+            @foreach($ticket->items as $idx => $item)
                 <button type="button" 
                         class="tab-btn {{ $idx === 0 ? 'active-tab' : '' }}" 
                         onclick="switchTab('{{ $idx }}')" 
                         id="tabBtn_{{ $idx }}">
-                    Item {{ $idx + 1 }}: {{ ucfirst(str_replace('_', ' ',$item->item_type)) }}
+                    Item {{ $idx + 1 }}: {{ ucfirst(str_replace('_', ' ', $item->item_type)) }}
                 </button>
             @endforeach
         </div>
 
-        @foreach($ticket->items as $idx =>$item)
+        @foreach($ticket->items as $idx => $item)
             @php
-                $itemImage =$item->image_data 
-                    ?? $item->r2_url 
-                    ?? $item->reference_image_path 
-                    ?? ($item->custom_options['reference_image'] ?? null);
-
-                if (!empty($itemImage) && is_string($itemImage) && !str_starts_with($itemImage, 'data:image') && !str_starts_with($itemImage, 'http://') && !str_starts_with($itemImage, 'https://')) {
-                    if (str_starts_with($itemImage, 'base64,')) {
-                        $itemImage = 'data:image/jpeg;' .$itemImage;
-                    } else {
-                        $cleanPath = ltrim(str_replace('public/', '',$itemImage), '/');
-                        $itemImage = asset('storage/' .$cleanPath);
-                    }
-                }
-
-                $itemImages = collect([
-                    $itemImage,
-                    $item->custom_options['reference_images'] ?? null,
-                ])->flatten()->filter(fn ($image) => is_string($image) && $image !== '')
-                  ->unique()->values();
+                $itemImage = $item->image_url;
             @endphp
         
             <div class="tab-content-panel {{ $idx === 0 ? 'active-panel' : '' }}" id="tabPanel_{{ $idx }}">
                 
                 <div class="overlay-left-image">
-                    @forelse($itemImages as $image)
-                        <img src="{{ $image }}"
+                    @if(!empty($itemImage))
+                        <img src="{{ $itemImage }}"
                              alt="{{ $item->item_type }} Reference"
                              style="max-width: 100%; max-height: 100%; object-fit: contain; margin-bottom: 8px;"
-                                                          onerror="this.style.display='none';" />
-                    @empty
+                             onerror="this.onerror=null; this.src='{{ asset('images/mascot-envelope.png') }}';" />
+                    @else
                         <div style="color: #94a3b8; font-size: 0.85rem; text-align: center; padding: 20px;">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 6px;">
-                            <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
-                            <path d="M2 17l10 5 10-5"></path>
-                            <path d="M2 12l10 5 10-5"></path>
-                        </svg>
-                        No Reference Image Attached
+                                <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                                <path d="M2 17l10 5 10-5"></path>
+                                <path d="M2 12l10 5 10-5"></path>
+                            </svg>
+                            No Reference Image Attached
                         </div>
-                    @endforelse
+                    @endif
                 </div>
         
                 <div class="overlay-right-details">
@@ -383,7 +458,7 @@
                         </div>
         
                         @if(!empty($item->custom_options))
-                            @foreach($item->custom_options as $key =>$value)
+                            @foreach($item->custom_options as $key => $value)
                                 @if(!in_array($key, ['reference_image', 'custom_tag_path']) && is_string($value))
                                     <div class="expanded-detail-row">
                                         <span class="expanded-detail-label">{{ ucfirst(str_replace('_', ' ', $key)) }}:</span>

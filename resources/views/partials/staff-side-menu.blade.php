@@ -6,17 +6,128 @@
             <line x1="6" y1="6" x2="18" y2="18"></line>
         </svg>
     </label>
-    
-    <!-- Staff Operations Navigation Links -->
+
+    <style>
+        /* Increase line-height and vertical spacing between main menu options */
+        .side-menu-links a, 
+        .staff-ops-main-trigger {
+            font-family: 'modern-bold';
+            display: block !important;
+            font-size: 1.85rem !important;
+            font-weight: 800 !important;
+            line-height: 1.35 !important;
+            margin-bottom: 14px !important;
+            color: #7e22ce !important; /* Bold purple theme color */
+            text-decoration: none !important;
+            text-transform: lowercase !important;
+            transition: color 0.2s ease, opacity 0.2s ease;
+        }
+
+        .side-menu-links a:hover,
+        .staff-ops-main-trigger:hover {
+            opacity: 0.8;
+        }
+
+        /* Large Plus Icon inside Purple Pill Button */
+        .plus-circle-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            background: #7e22ce;
+            border-radius: 50%;
+            color: #ffffff;
+            vertical-align: middle;
+            margin-left: 8px;
+            box-shadow: 0 2px 6px rgba(126, 34, 206, 0.3);
+            transition: transform 0.2s ease, background-color 0.2s ease;
+        }
+
+        /* Header state when Staff Ops is active */
+        .staff-ops-active-header {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: transparent;
+            border: none;
+            color: #94a3b8;
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-transform: lowercase;
+            cursor: pointer;
+            padding: 4px 0;
+            margin-bottom: 12px;
+            transition: color 0.2s ease;
+        }
+
+        .staff-ops-active-header:hover {
+            color: #22c55e !important; /* Highlight green on hover */
+        }
+
+        .small-toggle-circle {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 22px;
+            height: 22px;
+            background: #7e22ce;
+            border-radius: 50%;
+            color: #ffffff;
+        }
+
+        .hide-section {
+            display: none !important;
+        }
+    </style>
+
+    <!-- Navigation Links -->
     <div class="menu-card-box">
         <div class="side-menu-links">
             @if(in_array(Auth::user()->role, ['admin', 'developer'], true))
-                <a href="{{ Auth::user()->role === 'admin' ? route('admin.dashboard') : route('developer.dashboard') }}">overview</a>
-                <a href="{{ route('admin.users.index') }}">users & roles</a>
-                <a href="{{ route('admin.store.index') }}">shop content</a>
-                <a href="{{ route('developer.api-requests.index') }}">api requests</a>
-                <a href="{{ route('developer.posts.index') }}">post review</a>
-                <a href="{{ route('staff.dashboard') }}">staff operations</a>
+                
+                <!-- 1. Main Admin Options List (Shown by default) -->
+                <div id="mainAdminNavBlock">
+                    <a href="{{ Auth::user()->role === 'admin' ? route('admin.dashboard') : route('developer.dashboard') }}">overview</a>
+                    <a href="{{ route('admin.users.index') }}">users & roles</a>
+                    <a href="{{ route('admin.store.index') }}">shop content</a>
+                    <a href="{{ route('developer.api-requests.index') }}">api requests</a>
+                    <a href="{{ route('developer.posts.index') }}">post review</a>
+                    <a href="{{ route('admin.promotions.create') }}">promo broadcast</a>
+
+                    <!-- Staff Operations Option styled identical to other main options + Plus button -->
+                    <div class="staff-ops-main-trigger" onclick="toggleStaffOpsView(true)" style="cursor: pointer; display: flex; align-items: center;">
+                        <span>staff operations</span>
+                        <div class="plus-circle-btn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px;">
+                                <line x1="12" y1="5" x2="12" y2="19"></line>
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Staff Operations Sub-Items View (Hidden by default, shown when Plus button clicked) -->
+                <div id="staffOpsNavBlock" class="hide-section">
+                    <!-- Top Small Grey/Green Header with Close/Toggle -->
+                    <button type="button" class="staff-ops-active-header" onclick="toggleStaffOpsView(false)">
+                        <span>staff operations</span>
+                        <div class="small-toggle-circle">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                        </div>
+                    </button>
+
+                    <!-- Staff Operation Sub-Options styled identical to main menu items -->
+                    <a href="{{ route('staff.dashboard') }}">ticket queue</a>
+                    <a href="{{ route('staff.walkin.create') }}">walk-in ocr</a>
+                    <a href="{{ route('staff.schedule.index') }}">production schedule</a>
+                    <a href="{{ route('staff.transfers.index') }}">stock transfers & chat</a>
+                    <a href="{{ route('staff.qr.index') }}">qr scanner</a>
+                </div>
+
             @else
                 <a href="{{ route('staff.dashboard') }}">dashboard</a>
                 <a href="{{ route('staff.qr.index') }}">qr scanner</a>
@@ -26,12 +137,11 @@
             @endif
         </div>
     </div>
-    
+
     @auth
         <!-- Staff Identity Info & Quick Lock Screen -->
         <div style="display: flex; gap: 6px; width: 100%; max-width: 400px; margin-bottom: -5px; box-sizing: border-box;">
             
-            <!-- Staff Identity Card (No customer profile link) -->
             <div class="menu-card-box profile-preview-card" style="flex: 1; min-width: 0; padding: 0; margin: 0; box-sizing: border-box;">
                 <div class="profile-preview-inner" style="display: flex; align-items: center; gap: 10px; padding: 12px; height: 100%; box-sizing: border-box;">
                     <div style="position: relative; width: 38px; height: 38px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;">
@@ -45,7 +155,6 @@
                 </div>
             </div>
 
-            <!-- Lock Terminal Button (Locks High-Privilege Session) -->
             @if(Auth::user()->role === 'staff')
                 <form action="{{ route('staff.session.lock') }}" method="POST" style="margin: 0;">
                     @csrf
@@ -60,7 +169,6 @@
                 </form>
             @endif
 
-            <!-- Settings Button -->
             <a href="{{ route('staff.settings') }}" class="menu-card-box profile-preview-card" title="Staff Settings" style="text-decoration: none; flex: 0 0 52px; width: 52px; padding: 0; margin: 0; box-sizing: border-box; border-radius: 12px !important;">
                 <div class="profile-preview-inner" style="display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; padding: 0; border-radius: 12px;">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width: 22px; height: 22px; color: var(--text-black);">
@@ -71,7 +179,6 @@
             </a>
         </div>
         
-        <!-- Standard 3D Logout Button -->
         <form action="{{ route('logout') }}" method="POST" class="logout-form-wrapper">
             @csrf
             <button type="submit" class="logout-3d-btn">
@@ -89,3 +196,18 @@
         </div>
     @endauth
 </nav>
+
+<script>
+    function toggleStaffOpsView(showStaffOps) {
+        const mainBlock = document.getElementById('mainAdminNavBlock');
+        const staffBlock = document.getElementById('staffOpsNavBlock');
+
+        if (showStaffOps) {
+            mainBlock.classList.add('hide-section');
+            staffBlock.classList.remove('hide-section');
+        } else {
+            staffBlock.classList.add('hide-section');
+            mainBlock.classList.remove('hide-section');
+        }
+    }
+</script>

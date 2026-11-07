@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\OrderTicket;
+use App\Notifications\TicketApprovedNotification;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class ProductionScheduleController extends Controller
 {
@@ -64,7 +66,19 @@ class ProductionScheduleController extends Controller
             'status' => 'required|in:Pending Staff Review,Approved for Payment,In Production,Ready for Pickup,Completed,Cancelled',
         ]);
 
+        $previousStatus = $ticket->status;
         $ticket->update(['status' => $validated['status']]);
+
+        // Send notification to the user when ticket is approved for payment
+        if (in_array(strtolower($validated['status']), ['approved for payment', 'approved']) && 
+            strtolower($previousStatus) !== strtolower($validated['status']) && 
+            $ticket->user) {
+            try {
+                $ticket->user->notify(new TicketApprovedNotification($ticket));
+            } catch (\Exception $e) {
+                Log::error("Failed to dispatch approval notification for ticket #{$ticket->id}: " . $e->getMessage());
+            }
+        }
 
         return back()->with('success', "Order #{$ticket->id} status updated to {$validated['status']}");
     }

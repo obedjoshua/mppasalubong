@@ -4,8 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\ApiRequestMetric;
 use App\Models\Post;
-use App\Models\User;
 use App\Models\Purchase;
+use App\Models\User;
+use App\Notifications\PromotionalBroadcastNotification;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -130,6 +131,46 @@ class PortalController extends Controller
         $purchase->save();
 
         return back()->with("success", "Purchase status updated.");
+    }
+
+    /**
+     * Show the Promotional Broadcast Creation Form
+     */
+    public function createPromotionalBroadcast()
+    {
+        return view("portals.create-promotion");
+    }
+
+    /**
+     * Dispatch Promotional Broadcast via DB Notification and Email to All Users
+     */
+    public function sendPromotionalBroadcast(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            "title"      => "required|string|max:255",
+            "message"    => "required|string",
+            "action_url" => "nullable|url",
+            "banner"     => "nullable|image|max:5120",
+        ]);
+
+        $bannerPath = null;
+        if ($request->hasFile('banner')) {
+            $path = $request->file('banner')->store('promotions', 'public');
+            $bannerPath = 'storage/' . $path;
+        }
+
+        $users = User::all();
+
+        foreach ($users as $user) {
+            $user->notify(new PromotionalBroadcastNotification(
+                $validated["title"],
+                $validated["message"],
+                $validated["action_url"] ?? null,
+                $bannerPath
+            ));
+        }
+
+        return back()->with("success", "Promotional broadcast sent to " . $users->count() . " users successfully!");
     }
 
     private function dashboardData(string $portal): array
