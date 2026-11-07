@@ -130,13 +130,26 @@ class OrderController extends Controller
                 }
 
                 $imageDataUri = null;
+                $r2Url = null;
 
                 if ($request->hasFile("items.{$index}.reference_image")) {
                     $file = $request->file("items.{$index}.reference_image");
 
+                    // 1. PRIMARY: Convert and store in DB as Base64 Data URI
                     $base64 = base64_encode(file_get_contents($file->getRealPath()));
                     $mime = $file->getMimeType();
                     $imageDataUri = "data:{$mime};base64,{$base64}";
+
+                    // 2. SECONDARY / RESILIENT R2 BACKUP
+                    try {
+                        $r2Path = $file->store('tickets/'.$ticket->id, 'r2');
+                        if ($r2Path) {
+                            $baseUrl = rtrim((string) config('filesystems.disks.r2.url'), '/');
+                            $r2Url = "{$baseUrl}/{$r2Path}";
+                        }
+                    } catch (\Exception $e) {
+                        Log::error('R2 Image Upload Failed for ticket #'.$ticket->id.': '.$e->getMessage());
+                    }
                 }
 
                 $customOptions = $itemData;
@@ -151,7 +164,7 @@ class OrderController extends Controller
                     'item_type' => $itemData['item_type'],
                     'quantity' => $itemData['quantity'],
                     'image_data' => $imageDataUri,
-                    'r2_url' => null,
+                    'r2_url' => $r2Url,
                     'reference_image_path' => null,
                     'custom_options' => $customOptions,
                 ]);
@@ -176,6 +189,61 @@ class OrderController extends Controller
             'qrData' => $qrData,
             'isDashboardView' => request()->routeIs('dashboard.*') || request()->has('from_dashboard'),
         ]);
+    }
+
+    public function edit(OrderTicket $orderTicket)
+    {
+        if (in_array(strtolower($orderTicket->status), ['under review', 'in review', 'review mode'])) {
+            return redirect()->route('orders.ticket', $orderTicket->id)
+                ->with('error', 'This ticket is currently under review by staff and cannot be edited.');
+        }
+    
+        // Change 'orders.edit' to 'tickets.edit'
+        return view('tickets.edit', ['ticket' => $orderTicket]);
+    }
+
+    public function update(Request $request, OrderTicket $orderTicket)
+    {
+        if (in_array(strtolower($orderTicket->status), ['under review', 'in review', 'review mode'])) {
+            return redirect()->route('orders.ticket', $orderTicket->id)
+                ->with('error', 'This ticket is currently under review by staff and cannot be edited.');
+        }
+
+        $validated = $request->validate([
+            'customer_name' => 'required|string|max:255',
+            'pickup_branch' => 'required|string|in:main_shop,san_jose',
+            'pickup_date' => 'required|date',
+            'pickup_time' => 'required|string',
+            'location_address' => 'required|string',
+            'additional_notes' => 'nullable|string',
+        ]);
+
+        $orderTicket->update($validated);
+
+        return redirect()->route('orders.ticket', $orderTicket->id)
+            ->with('success', 'Order ticket updated successfully!');
+    }
+
+    public function cancelRequestForm(OrderTicket $orderTicket)
+    {
+        // Change 'orders.cancel-request' to 'tickets.cancel-request'
+        return view('tickets.cancel-request', ['ticket' => $orderTicket]);
+    }
+
+    public function submitCancelRequest(Request $request, OrderTicket $orderTicket)
+    {
+        $request->validate([
+            'cancellation_reason' => 'required|string|max:1000',
+        ]);
+
+        $orderTicket->update([
+            'status' => 'Cancellation Requested',
+            'additional_notes' => ($orderTicket->additional_notes ? $orderTicket->additional_notes . "\n\n" : '') . 
+                '[Cancellation Request Reason]: ' . $request->input('cancellation_reason'),
+        ]);
+
+        return redirect()->route('orders.ticket', $orderTicket->id)
+            ->with('success', 'Cancellation request submitted to staff for review.');
     }
 
     public function destroy(OrderTicket $orderTicket)

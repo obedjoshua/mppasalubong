@@ -108,6 +108,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/orders/ticket/{orderTicket}', [OrderController::class, 'destroy'])->name('orders.destroy');
     Route::post('/tickets/{id}/restore', [OrderController::class, 'restore'])->name('tickets.restore');
 
+    // Ticket Cancellation Request Routes
+    Route::get('/orders/ticket/{orderTicket}/cancel-request', [OrderController::class, 'cancelRequestForm'])->name('orders.cancel-request.form');
+    Route::post('/orders/ticket/{orderTicket}/cancel-request', [OrderController::class, 'submitCancelRequest'])->name('orders.cancel-request.submit');
+
+    // Community Routes
     Route::get('/community/create', [CommunityController::class, 'create'])->name('community.post.create');
     Route::post('/community/post', [CommunityController::class, 'storePost'])->name('community.post.store');
     Route::post('/community/post/{id}/comment', [CommunityController::class, 'storeComment'])->name('community.comment.store');
@@ -148,6 +153,7 @@ Route::middleware(['auth', 'staff', EnsureStaffTerminalUnlocked::class])
         Route::post('/session/unlock', [StaffSessionController::class, 'unlockSession'])->name('session.unlock');
     });
 
+// Admin Portal Routes
 Route::middleware(['auth', 'portal:admin'])
     ->prefix('admin')
     ->name('admin.')
@@ -168,6 +174,10 @@ Route::middleware(['auth', 'portal:admin'])
         Route::get('/dashboard/live', [PortalController::class, 'liveDashboard'])->name('dashboard.live');
         Route::get('/users', [PortalController::class, 'users'])->name('users.index');
         Route::put('/users/{user}/role', [PortalController::class, 'updateUserRole'])->name('users.role');
+
+        // Promotional Broadcast Routes
+        Route::get('/promotions/create', [PortalController::class, 'createPromotionalBroadcast'])->name('promotions.create');
+        Route::post('/promotions/send', [PortalController::class, 'sendPromotionalBroadcast'])->name('promotions.send');
     });
 
 Route::middleware(['auth', 'portal:developer'])
@@ -214,4 +224,3 @@ Route::post('/api/vision/extract-colors', [VisionController::class, 'extractColo
     ->middleware('api.metrics')->name('vision.extract');
 Route::get('/community', [CommunityController::class, 'index'])->name('community.index');
 Route::get('/community/user/{id}', [CommunityController::class, 'getUserProfileJson'])->name('community.user.profile');
-
