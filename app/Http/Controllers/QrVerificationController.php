@@ -19,15 +19,46 @@ class QrVerificationController extends Controller
             'ticket_id' => 'required|string',
         ]);
 
+        $input = trim($validated['ticket_id']);
+        $possibleTokens = [$input];
+
+        // Parse URL if full link was scanned
+        if (filter_var($input, FILTER_VALIDATE_URL) || str_contains($input, 'http')) {
+            $parsedUrl = parse_url($input);
+
+            // Extract query parameters like ?token=... or ?ticket=...
+            if (isset($parsedUrl['query'])) {
+                parse_str($parsedUrl['query'], $queryParams);
+                if (isset($queryParams['token'])) {
+                    $possibleTokens[] = $queryParams['token'];
+                }
+                if (isset($queryParams['ticket'])) {
+                    $possibleTokens[] = $queryParams['ticket'];
+                }
+            }
+
+            // Extract trailing segment from path (e.g. /orders/verify/JA2X8h-Oa_c)
+            if (isset($parsedUrl['path'])) {
+                $pathSegments = array_values(array_filter(explode('/', trim($parsedUrl['path'], '/'))));
+                if (!empty($pathSegments)) {
+                    $possibleTokens[] = end($pathSegments);
+                }
+            }
+        }
+
+        // Clean up candidates
+        $possibleTokens = array_unique(array_filter($possibleTokens));
+
+        // Query database against any extracted token match
         $ticket = OrderTicket::with('items')
-            ->where('id', $validated['ticket_id'])
-            ->orWhere('qr_token', $validated['ticket_id'])
+            ->whereIn('id', $possibleTokens)
+            ->orWhereIn('qr_token', $possibleTokens)
             ->first();
 
         if (! $ticket) {
             return response()->json([
                 'success' => false,
-                'message' => 'Order ticket token not found in system records.',
+                'message' => "Token not found. Tried checking tokens: " . implode(', ', $possibleTokens),
             ], 404);
         }
 

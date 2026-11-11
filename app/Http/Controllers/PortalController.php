@@ -144,33 +144,46 @@ class PortalController extends Controller
     /**
      * Dispatch Promotional Broadcast via DB Notification and Email to All Users
      */
-    public function sendPromotionalBroadcast(Request $request): RedirectResponse
+    public function sendPromotionalBroadcast(Request $request)
     {
-        $validated = $request->validate([
-            "title"      => "required|string|max:255",
-            "message"    => "required|string",
-            "action_url" => "nullable|url",
-            "banner"     => "nullable|image|max:5120",
+        $request->validate([
+            'title'        => 'required|string|max:255',
+            'description'  => 'required|string',
+            'banner_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120',
         ]);
-
-        $bannerPath = null;
-        if ($request->hasFile('banner')) {
-            $path = $request->file('banner')->store('promotions', 'public');
-            $bannerPath = 'storage/' . $path;
+    
+        // Handle uploaded banner image or select fallback
+        $bannerUrl = asset('images/community_header_01.png');
+        if ($request->hasFile('banner_image')) {
+            $path = $request->file('banner_image')->store('promotions', 'public');
+            $bannerUrl = Storage::url($path);
         }
-
-        $users = User::all();
-
-        foreach ($users as $user) {
-            $user->notify(new PromotionalBroadcastNotification(
-                $validated["title"],
-                $validated["message"],
-                $validated["action_url"] ?? null,
-                $bannerPath
-            ));
+    
+        // 1. Restrict delivery to CUSTOMERS ONLY
+        $customers = User::where('role', 'customer')->get(); 
+        // Note: If you don't have a 'role' column, use: User::where('is_admin', false)->get();
+    
+        // 2. Dispatch notification with synced title, message, and banner URL
+        foreach ($customers as $customer) {
+            Notification::create([
+                'user_id'      => $customer->id,
+                'title'        => $request->title,
+                'message'      => $request->description,
+                'type'         => 'promotional',
+                'banner_image' => $bannerUrl,
+                'is_read'      => false,
+                'data'         => [
+                    'title'        => $request->title,
+                    'message'      => $request->description,
+                    'body'         => $request->description,
+                    'type'         => 'promotional',
+                    'banner_image' => $bannerUrl,
+                    'action_url'   => route('notifications.index'),
+                ],
+            ]);
         }
-
-        return back()->with("success", "Promotional broadcast sent to " . $users->count() . " users successfully!");
+    
+        return redirect()->back()->with('success', 'Promotional broadcast successfully sent to all customers!');
     }
 
     private function dashboardData(string $portal): array

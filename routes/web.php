@@ -59,6 +59,9 @@ Route::get('/email/verify/{id}/{hash}', function (EmailVerificationRequest $requ
     return redirect()->route('orders.index');
 })->middleware(['auth', 'signed'])->name('verification.verify');
 
+// Public Guest Ticket View (Shareable via Messenger, Privacy-Masked)
+Route::get('/tickets/guest/{id}', [OrderController::class, 'guestView'])->name('tickets.guest-view');
+
 // Customer Base Routes
 Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', function () {
@@ -68,10 +71,15 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/profile/edit', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::get('/wishlist', [WishlistController::class, 'index'])->name('wishlist.index');
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::get('/notifications/{id}', [NotificationController::class, 'show'])->name('notifications.show');
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
     Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
     Route::get('/orders/ticket/{orderTicket}', [OrderController::class, 'showTicket'])->name('orders.ticket');
     Route::get('/orders/verify/{orderTicket}', [OrderController::class, 'showTicket'])->name('tickets.verify');
+
+    // Ticket Payment Redirect & Simulation Routes
+    Route::get('/orders/ticket/{orderTicket}/pay', [OrderController::class, 'processPayment'])->name('orders.pay');
+    Route::post('/orders/ticket/{orderTicket}/complete-dummy-payment', [OrderController::class, 'completeDummyPayment'])->name('orders.complete-dummy-payment');
 });
 
 Route::middleware(['web', 'auth'])->group(function () {
@@ -88,6 +96,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/dashboard/verify-otp', [ProfileController::class, 'verifyOtp'])->name('profile.otp.verify');
 
     Route::post('/wishlist/toggle', [WishlistController::class, 'toggle'])->name('wishlist.toggle');
+    
+    // User Notification Batch & Reading Routes
+    Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('user.notifications.mark-all-read');
+    Route::delete('/notifications/batch-delete', [NotificationController::class, 'batchDelete'])->name('user.notifications.batch-delete');
     Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead'])->name('notifications.read');
 
     Route::post('/settings', [SettingsController::class, 'update'])->name('settings.update');
@@ -175,11 +187,15 @@ Route::middleware(['auth', 'portal:admin'])
         Route::get('/users', [PortalController::class, 'users'])->name('users.index');
         Route::put('/users/{user}/role', [PortalController::class, 'updateUserRole'])->name('users.role');
 
+        // Admin Testing Control Toggle Route
+        Route::post('/tickets/{orderTicket}/toggle-testing', [OrderController::class, 'toggleTesting'])->name('tickets.toggle-testing');
+
         // Promotional Broadcast Routes
         Route::get('/promotions/create', [PortalController::class, 'createPromotionalBroadcast'])->name('promotions.create');
         Route::post('/promotions/send', [PortalController::class, 'sendPromotionalBroadcast'])->name('promotions.send');
     });
 
+// Developer Portal Routes
 Route::middleware(['auth', 'portal:developer'])
     ->prefix('developer')
     ->name('developer.')
