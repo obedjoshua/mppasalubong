@@ -55,6 +55,96 @@
             background: #fef2f2;
             border-color: #ef4444;
         }
+        .admin-test-bar {
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            padding: 12px 16px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        .admin-test-badge {
+            font-size: 0.75rem;
+            font-weight: bold;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+        .admin-test-badge.testing {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        .admin-test-badge.live {
+            background: #e2e8f0;
+            color: #475569;
+        }
+        .btn-admin-toggle {
+            background: #334155;
+            color: #ffffff;
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        .btn-admin-toggle:hover {
+            background: #1e293b;
+        }
+        .payment-redirect-banner {
+            background: #ecfdf5;
+            border: 1px solid #a7f3d0;
+            padding: 16px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            gap: 12px;
+        }
+        .btn-pay-now {
+            background: #059669;
+            color: #ffffff;
+            font-weight: 800;
+            padding: 10px 18px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 0.9rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: background 0.2s ease;
+        }
+        .btn-pay-now:hover {
+            background: #047857;
+        }
+        .messenger-share-bar {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            padding: 14px 18px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .btn-messenger-share {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #2563eb;
+            color: #ffffff;
+            font-weight: 700;
+            font-size: 0.8rem;
+            padding: 8px 14px;
+            border-radius: 8px;
+            text-decoration: none;
+            transition: background 0.2s ease;
+        }
+        .btn-messenger-share:hover {
+            background: #1d4ed8;
+        }
     </style>
 @endpush
 
@@ -91,6 +181,40 @@
     @if(session('success'))
         <div style="background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; font-size: 0.9rem; font-weight: bold;">
             {{ session('success') }}
+        </div>
+    @endif
+
+    {{-- STEP 6: ADMIN TESTING CONTROL TOGGLE --}}
+    @if(auth()->check() && method_exists(auth()->user(), 'isAdmin') && auth()->user()->isAdmin())
+        <div class="admin-test-bar">
+            <div>
+                <strong style="font-size: 0.85rem; color: #334155;">Testing Mode:</strong>
+                <span class="admin-test-badge {{ $ticket->is_testing ? 'testing' : 'live' }}">
+                    {{ $ticket->is_testing ? 'DUMMY GATEWAY ACTIVE' : 'LIVE PAYMONGO ACTIVE' }}
+                </span>
+            </div>
+            <form action="{{ route('admin.tickets.toggle-testing', $ticket->id) }}" method="POST">
+                @csrf
+                <button type="submit" class="btn-admin-toggle">
+                    Toggle Testing Mode
+                </button>
+            </form>
+        </div>
+    @endif
+
+    {{-- STEP 5: JOLLIBEE-STYLE ORDER STATUS TRACKER PARTIAL --}}
+    @include('partials.order-status-tracker', ['ticket' => $ticket])
+
+    {{-- STEP 6: PAYMENT REDIRECT BANNER FOR APPROVED TICKETS --}}
+    @if(in_array(strtolower($ticket->status), ['approved', 'approved for payment']))
+        <div class="payment-redirect-banner">
+            <div>
+                <h4 style="margin: 0 0 2px 0; color: #065f46; font-size: 1rem; font-weight: bold;">Order Approved for Payment!</h4>
+                <p style="margin: 0; font-size: 0.8rem; color: #047857;">Proceed to complete your payment and activate kitchen production.</p>
+            </div>
+            <a href="{{ route('orders.pay', $ticket->id) }}" class="btn-pay-now">
+                Pay Now (₱{{ number_format($ticket->total_price ?? $ticket->total_amount ?? 0, 2) }})
+            </a>
         </div>
     @endif
 
@@ -138,7 +262,7 @@
         </div>
     @endif
 
-    {{-- DASHBOARD REDIRECT PROMPT: ONLY SHOWN IMMEDIATELY AFTER CREATING A TICKET --}}
+    {{-- DASHBOARD REDIRECT PROMPT --}}
     @if(session('just_submitted'))
         <div class="dashboard-redirect-prompt">
             <div class="prompt-text">
@@ -392,6 +516,19 @@
             </div>
 
         </div>
+    </div>
+
+    {{-- STEP 7: SHARE GUEST VIEW TO MESSENGER BANNER --}}
+    <div class="messenger-share-bar">
+        <span style="font-size: 0.8rem; color: #475569; font-weight: 600;">Share Guest Ticket to Messenger:</span>
+        <a href="https://www.facebook.com/dialog/send?link={{ urlencode(route('tickets.guest-view', $ticket->id)) }}&app_id=YOUR_FB_APP_ID&redirect_uri={{ urlencode(url()->current()) }}" 
+           target="_blank" 
+           class="btn-messenger-share">
+            <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24" style="width: 16px; height: 16px;">
+                <path d="M12 0C5.373 0 0 4.974 0 11.111c0 3.497 1.745 6.616 4.472 8.652v4.237l4.086-2.242c1.09.301 2.246.464 3.442.464 6.627 0 12-4.975 12-11.111C24 4.974 18.627 0 12 0zm1.191 14.963l-3.055-3.26-5.963 3.26 6.559-6.96 3.127 3.26 5.89-3.26-6.558 6.96z"/>
+            </svg>
+            <span>Send to Messenger</span>
+        </a>
     </div>
 
 </div>
