@@ -4,6 +4,7 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\SocialAuthController;
 use App\Http\Controllers\ChallengeController;
+use App\Http\Controllers\ChatAssistantController;
 use App\Http\Controllers\CommunityController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OrderController;
@@ -31,6 +32,11 @@ Route::get('/', fn () => view('welcome'))->name('home');
 Route::get('/shop', [ShopController::class, 'index'])->name('shop');
 Route::get('/shop/products/lookup', [ShopController::class, 'lookup'])->name('shop.products.lookup');
 Route::get('/shop/{slug}', [ShopController::class, 'show'])->name('shop.product');
+
+// Ask Jive AI Assistant Routes
+Route::get('/ask-jive', [ChatAssistantController::class, 'page'])->name('chat.page');
+Route::post('/api/chat/send', [ChatAssistantController::class, 'sendMessage'])->name('chat.send_message');
+Route::post('/api/chat/send-alias', [ChatAssistantController::class, 'sendMessage'])->name('chat.send');
 
 Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [LoginController::class, 'login']);

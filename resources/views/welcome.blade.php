@@ -322,3 +322,426 @@
         @include('partials.footer')
         </div>
 @endsection
+
+<!-- UNCORRUPTED FIXED BOTTOM-RIGHT AI ASSISTANT WIDGET -->
+<style>
+    /* Duolingo 3D Button Styles */
+    .btn-duolingo-purple {
+        background-color: #7C3AED !important;
+        border: none !important;
+        border-bottom: 4px solid #5B21B6 !important;
+        border-radius: 12px !important;
+        transition: transform 0.1s cubic-bezier(0.2, 0.8, 0.4, 1), border-bottom 0.1s ease, background-color 0.15s ease !important;
+    }
+    .btn-duolingo-purple:hover {
+        background-color: #6D28D9 !important;
+        transform: translateY(-2px) !important;
+        border-bottom-width: 6px !important;
+    }
+    .btn-duolingo-purple:active {
+        transform: translateY(3px) !important;
+        border-bottom-width: 1px !important;
+    }
+
+    .btn-duolingo-send {
+        background-color: #7C3AED !important;
+        border: none !important;
+        border-bottom: 3px solid #5B21B6 !important;
+        border-radius: 10px !important;
+        transition: transform 0.1s ease, border-bottom 0.1s ease, background-color 0.15s ease !important;
+    }
+    .btn-duolingo-send:hover {
+        background-color: #6D28D9 !important;
+        transform: translateY(-1px) !important;
+        border-bottom-width: 4px !important;
+    }
+    .btn-duolingo-send:active {
+        transform: translateY(2px) !important;
+        border-bottom-width: 1px !important;
+    }
+
+    /* Unboxed Clean Circular Avatar */
+    .avatar-unboxed {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 50% !important;
+        transform: scaleX(-1);
+        display: block;
+        box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+    }
+
+    /* Bottom Right Expansion Drawer Animations */
+    #chat-popup {
+        transition: opacity 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+        opacity: 0;
+        transform: translateY(24px) scale(0.92);
+        pointer-events: none;
+        transform-origin: bottom right;
+    }
+    #chat-popup.open {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        pointer-events: auto;
+    }
+
+    /* Messenger Typing Indicator Dots Animation */
+    .messenger-typing {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 6px;
+    }
+    .messenger-typing span {
+        width: 7px;
+        height: 7px;
+        background-color: #9ca3af;
+        border-radius: 50%;
+        display: inline-block;
+        animation: messengerBounce 1.4s infinite ease-in-out both;
+    }
+    .messenger-typing span:nth-child(1) { animation-delay: 0s; }
+    .messenger-typing span:nth-child(2) { animation-delay: 0.2s; }
+    .messenger-typing span:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes messengerBounce {
+        0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+        40% { transform: scale(1); opacity: 1; }
+    }
+
+    /* Product UI Card Interactive Styling */
+    .product-card-item {
+        background-color: #ffffff;
+        border: 1.5px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 12px;
+        margin-top: 8px;
+        transition: all 0.2s ease;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.04);
+    }
+    .product-card-item:hover {
+        border-color: #7C3AED;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 14px rgba(124, 58, 237, 0.15);
+    }
+    .product-card-btn {
+        display: inline-block;
+        background-color: #7C3AED;
+        color: #ffffff;
+        padding: 6px 14px;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: bold;
+        text-decoration: none;
+        margin-top: 8px;
+        border-bottom: 2px solid #5B21B6;
+    }
+
+    /* Ticket Card Interactive Item */
+    .ticket-card-item {
+        background-color: #ffffff;
+        border: 1.5px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 12px;
+        margin-top: 8px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.04);
+    }
+    .ticket-card-item:hover {
+        border-color: #7C3AED;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 14px rgba(124, 58, 237, 0.15);
+    }
+
+    /* Toast Notification */
+    #chat-toast-pop {
+        position: fixed !important;
+        bottom: 96px !important;
+        right: 24px !important;
+        z-index: 2147483646 !important;
+        background-color: #ffffff;
+        color: #1f2937;
+        padding: 10px 14px;
+        border-radius: 12px;
+        box-shadow: 0 8px 24px rgba(124, 58, 237, 0.25);
+        border: 1.5px solid #7C3AED;
+        font-family: sans-serif;
+        font-size: 13px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+        opacity: 0;
+        transform: translateY(12px) scale(0.95);
+        pointer-events: none;
+        transition: opacity 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    #chat-toast-pop.show {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        pointer-events: auto;
+    }
+</style>
+
+<!-- Floating Toast Message (Fixed Bottom-Right) -->
+<div id="chat-toast-pop" onclick="toggleChatPopup()">
+    <div style="width: 28px; height: 28px; flex-shrink: 0;">
+        <img src="{{ asset('images/ask_jive_avatar.png') }}" alt="Jive" class="avatar-unboxed">
+    </div>
+    <span>Hi! Need help with your pasalubong orders? 👋</span>
+</div>
+
+<!-- Floating Trigger Button (Fixed Bottom-Right) -->
+<div id="chat-widget-btn" onclick="toggleChatPopup()" style="position: fixed !important; bottom: 24px !important; right: 24px !important; z-index: 2147483647 !important; cursor: pointer;">
+    <div class="btn-duolingo-purple" style="width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; padding: 2px;">
+        <img src="{{ asset('images/ask_jive_avatar.png') }}" alt="Ask Jive" class="avatar-unboxed">
+    </div>
+</div>
+
+<!-- Floating Chat Drawer Popup (Fixed Bottom-Right) -->
+<div id="chat-popup" style="position: fixed !important; bottom: 96px !important; right: 24px !important; width: 380px; max-width: 90vw; height: 520px; z-index: 2147483647 !important; border-radius: 16px; overflow: hidden; background-color: #ffffff; box-shadow: 0 16px 40px rgba(0, 0, 0, 0.22); display: flex; flex-direction: column;">
+    
+    <!-- Header (Electric Purple) -->
+    <div style="background-color: #7C3AED; padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; border-radius: 16px 16px 0 0; box-sizing: border-box; width: 100%; flex-shrink: 0; border-bottom: 2px solid #6D28D9;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="width: 40px; height: 40px; flex-shrink: 0;">
+                <img src="{{ asset('images/ask_jive_avatar.png') }}" alt="Jive" class="avatar-unboxed">
+            </div>
+            <div style="display: flex; flex-direction: column;">
+                <span style="color: #ffffff; font-family: 'Recoleta-Bold', serif; font-size: 17px; font-weight: bold; line-height: 1.2;">Ask Jive</span>
+                <span style="color: rgba(255, 255, 255, 0.8); font-size: 11px; font-family: sans-serif;">Powered by Nemotron AI</span>
+            </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <a href="{{ route('chat.page') }}" title="Expand to Full Page" style="color: #ffffff; text-decoration: none; padding: 6px; display: flex; align-items: center; justify-content: center; background: rgba(255, 255, 255, 0.18); border-radius: 10px; transition: background 0.15s ease;" onmouseover="this.style.background='rgba(255,255,255,0.32)'" onmouseout="this.style.background='rgba(255,255,255,0.18)'">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                  <path fill-rule="evenodd" d="M5.828 10.172a.5.5 0 0 0-.707 0l-4.096 4.096V11.5a.5.5 0 0 0-1 0v3.975a.5.5 0 0 0 .5.5H4.5a.5.5 0 0 0 0-1H1.707l4.096-4.096a.5.5 0 0 0 0-.707zm4.344-4.344a.5.5 0 0 0 .707 0l4.096-4.096V4.5a.5.5 0 1 0 1 0V.525a.5.5 0 0 0-.5-.5H11.5a.5.5 0 0 0 0 1h2.793l-4.096 4.096a.5.5 0 0 0 0 .707z"/>
+                </svg>
+            </a>
+            <button type="button" onclick="toggleChatPopup()" style="background: rgba(255, 255, 255, 0.18); border: none; color: #ffffff; font-size: 18px; font-weight: bold; cursor: pointer; padding: 4px 10px; border-radius: 10px; line-height: 1; transition: background 0.15s ease;" onmouseover="this.style.background='rgba(255,255,255,0.32)'" onmouseout="this.style.background='rgba(255,255,255,0.18)'">&times;</button>
+        </div>
+    </div>
+
+    <!-- Scrollable Messages Body -->
+    <div id="popup-chat-body" style="flex: 1 1 auto; padding: 16px; background-color: #f8f9fa; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; box-sizing: border-box;">
+        <div style="display: flex; gap: 10px; align-items: flex-start;">
+            <div style="width: 34px; height: 34px; flex-shrink: 0;">
+                <img src="{{ asset('images/ask_jive_avatar.png') }}" alt="Jive" class="avatar-unboxed">
+            </div>
+            <div style="background-color: #ffffff; padding: 12px 14px; border-radius: 14px; border: 1px solid #e5e7eb; max-width: 82%; box-shadow: 0 3px 6px rgba(0,0,0,0.03);">
+                <p style="margin: 0; font-size: 13px; color: #1f2937; line-height: 1.45; font-family: sans-serif;">Hi! I'm Jive. How can I help you with your pasalubong orders or pending tickets today?</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Input Footer -->
+    <div style="padding: 12px 14px; background-color: #ffffff; border-top: 1px solid #e5e7eb; border-radius: 0 0 16px 16px; flex-shrink: 0;">
+        <form id="popup-chat-form" onsubmit="handlePopupSend(event)" style="display: flex; margin: 0; gap: 8px;">
+            <input type="text" id="popup-chat-input" placeholder="Type your question..." autocomplete="off" style="flex: 1; border: 1.5px solid #d1d5db; padding: 10px 14px; border-radius: 12px; outline: none; font-size: 13px; font-family: sans-serif; background-color: #f9fafb; transition: border-color 0.15s ease;" onfocus="this.style.borderColor='#7C3AED'" onblur="this.style.borderColor='#d1d5db'">
+            <button type="submit" class="btn-duolingo-send" style="color: #ffffff; padding: 10px 16px; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" viewBox="0 0 16 16">
+                  <path d="M15.964.686a.5.5 0 0 0-.65-.65L.767 5.855H.766l-.452.18a.5.5 0 0 0-.082.887l.41.26.001.002 4.995 3.178 3.178 4.995.002.002.26.41a.5.5 0 0 0 .886-.083l6-15Zm-1.833 1.89L6.637 10.07l-.215-.138L3.088 7.97l9.043-5.394Zm-6.527 8.01 7.51-7.51-5.394 9.043-2.116-3.333Z"/>
+                </svg>
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+    let popupHistory = [];
+    let hasAnsweredOnePlusOne = false;
+    const avatarUrl = "{{ asset('images/ask_jive_avatar.png') }}";
+
+    function toggleChatPopup() {
+        const popup = document.getElementById('chat-popup');
+        const toast = document.getElementById('chat-toast-pop');
+        popup.classList.toggle('open');
+        if (popup.classList.contains('open')) {
+            toast.classList.remove('show');
+        }
+    }
+
+    setInterval(() => {
+        const popup = document.getElementById('chat-popup');
+        const toast = document.getElementById('chat-toast-pop');
+        if (!popup.classList.contains('open')) {
+            toast.classList.add('show');
+            setTimeout(() => { toast.classList.remove('show'); }, 5000);
+        }
+    }, 10000);
+
+    function showMessengerTyping() {
+        const body = document.getElementById('popup-chat-body');
+        const typingHtml = `
+            <div id="messenger-typing-indicator" style="display: flex; gap: 10px; align-items: flex-start;">
+                <div style="width: 34px; height: 34px; flex-shrink: 0;">
+                    <img src="${avatarUrl}" alt="Jive" class="avatar-unboxed">
+                </div>
+                <div style="background-color: #ffffff; padding: 10px 14px; border-radius: 14px; border: 1px solid #e5e7eb; box-shadow: 0 3px 6px rgba(0,0,0,0.03);">
+                    <div class="messenger-typing">
+                        <span></span><span></span><span></span>
+                    </div>
+                </div>
+            </div>
+        `;
+        body.insertAdjacentHTML('beforeend', typingHtml);
+        body.scrollTop = body.scrollHeight;
+    }
+
+    function removeMessengerTyping() {
+        const indicator = document.getElementById('messenger-typing-indicator');
+        if (indicator) indicator.remove();
+    }
+
+    // Direct trigger when clicking "Ask Jive about this ticket"
+    function askJiveAboutTicket(ticketId) {
+        const input = document.getElementById('popup-chat-input');
+        input.value = `What is the status of ticket ${ticketId}?`;
+        document.getElementById('popup-chat-form').dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+    }
+
+    // Helper: Parse [PRODUCT_CARD] and [TICKET_CARD] blocks into interactive dual-action elements
+    function parseCards(rawText) {
+        let parsed = rawText;
+
+        // 1. Parse Product Cards
+        const productRegex = /\[PRODUCT_CARD\]([\s\S]*?)\[END_PRODUCT_CARD\]/g;
+        let prodMatch;
+        while ((prodMatch = productRegex.exec(rawText)) !== null) {
+            const content = prodMatch[1];
+            const name = (content.match(/Name:\s*(.*)/i) || [])[1]?.trim() || 'Product';
+            const price = (content.match(/Price:\s*(.*)/i) || [])[1]?.trim() || '';
+            const branch = (content.match(/Branch:\s*(.*)/i) || [])[1]?.trim() || '';
+            const desc = (content.match(/Description:\s*(.*)/i) || [])[1]?.trim() || '';
+            const link = (content.match(/Link:\s*(.*)/i) || [])[1]?.trim() || '/shop';
+
+            const cardHtml = `
+                <div class="product-card-item">
+                    <div style="font-size: 14px; font-weight: bold; color: #1f2937;">${name}</div>
+                    ${price ? `<div style="font-size: 13px; font-weight: 700; color: #7C3AED; margin-top: 2px;">${price}</div>` : ''}
+                    ${branch ? `<div style="font-size: 11px; color: #6b7280; margin-top: 2px;">📍 ${branch}</div>` : ''}
+                    ${desc ? `<div style="font-size: 12px; color: #4b5563; margin-top: 4px;">${desc}</div>` : ''}
+                    <a href="${link}" class="product-card-btn">View Product &rarr;</a>
+                </div>
+            `;
+            parsed = parsed.replace(prodMatch[0], cardHtml);
+        }
+
+        // 2. Parse Ticket Cards with Dual Actions (View Details & Ask Jive)
+        const ticketRegex = /\[TICKET_CARD\]([\s\S]*?)\[END_TICKET_CARD\]/g;
+        let tickMatch;
+        while ((tickMatch = ticketRegex.exec(rawText)) !== null) {
+            const content = tickMatch[1];
+            const id = (content.match(/ID:\s*(.*)/i) || [])[1]?.trim() || 'TCK-000';
+            const subject = (content.match(/Subject:\s*(.*)/i) || [])[1]?.trim() || 'Support Ticket';
+            const status = (content.match(/Status:\s*(.*)/i) || [])[1]?.trim() || 'Pending';
+            const date = (content.match(/Date:\s*(.*)/i) || [])[1]?.trim() || '';
+            const link = (content.match(/Link:\s*(.*)/i) || [])[1]?.trim() || `/tickets/${id.replace('TCK-', '')}`;
+
+            const ticketHtml = `
+                <div class="ticket-card-item" style="cursor: default;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <strong style="color:#7C3AED; font-size:13px;">${id}</strong>
+                        <span style="font-size:11px; background:#fef3c7; color:#d97706; padding:2px 6px; border-radius:6px; font-weight:bold;">${status}</span>
+                    </div>
+                    <div style="font-size:12px; color:#374151; font-weight:600; margin-top:4px;">${subject}</div>
+                    ${date ? `<div style="font-size:10px; color:#9ca3af; margin-top:4px;">Created: ${date}</div>` : ''}
+                    
+                    <div style="display:flex; gap:6px; margin-top:10px;">
+                        <button type="button" onclick="window.location.href='${link}'" style="flex:1; background:#7C3AED; color:#fff; border:none; padding:6px 10px; border-radius:8px; font-size:11px; font-weight:bold; cursor:pointer;">
+                            View Details ↗
+                        </button>
+                        <button type="button" onclick="askJiveAboutTicket('${id}')" style="flex:1; background:#f3e8ff; color:#7C3AED; border:1px solid #7C3AED; padding:6px 10px; border-radius:8px; font-size:11px; font-weight:bold; cursor:pointer;">
+                            Ask Jive 💬
+                        </button>
+                    </div>
+                </div>
+            `;
+            parsed = parsed.replace(tickMatch[0], ticketHtml);
+        }
+
+        return parsed;
+    }
+
+    function handlePopupSend(e) {
+        e.preventDefault();
+        const input = document.getElementById('popup-chat-input');
+        const message = input.value.trim();
+        if (!message) return;
+
+        appendPopupMessage('user', message);
+        input.value = '';
+
+        const lowerMsg = message.toLowerCase();
+
+        // 1. Guardrail: 1+1 Special Handling
+        if (lowerMsg.includes('1+1') || lowerMsg.includes('1 + 1') || lowerMsg.includes('one plus one')) {
+            showMessengerTyping();
+            setTimeout(() => {
+                removeMessengerTyping();
+                if (!hasAnsweredOnePlusOne) {
+                    hasAnsweredOnePlusOne = true;
+                    appendPopupMessage('assistant', "1 + 1 = 2! Please note that I can only help with pasalubong orders and support tickets. Please stay on topic! 😊");
+                } else {
+                    appendPopupMessage('assistant', "I have already answered 1+1! Please stay on topic regarding your pasalubong orders and support requests.");
+                }
+            }, 600);
+            return;
+        }
+
+        // 2. Standard AI Response Flow
+        showMessengerTyping();
+        popupHistory.push({ role: 'user', content: message });
+
+        fetch("{{ route('chat.send_message') }}", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRF-TOKEN": "{{ csrf_token() }}"
+            },
+            body: JSON.stringify({ messages: popupHistory })
+        })
+        .then(res => {
+            if (!res.ok) throw new Error("HTTP error " + res.status);
+            return res.json();
+        })
+        .then(data => {
+            removeMessengerTyping();
+            if (data.success && data.reply) {
+                appendPopupMessage('assistant', data.reply);
+                popupHistory.push({ role: 'assistant', content: data.reply });
+            } else {
+                appendPopupMessage('assistant', "I can only assist you with pasalubong products, orders, and support tickets. Please stay on topic! 🧁");
+            }
+        })
+        .catch(err => {
+            removeMessengerTyping();
+            console.error("Chat Error:", err);
+            appendPopupMessage('assistant', "Please stay on topic with your pasalubong questions or ticket inquiries! 🧁");
+        });
+    }
+
+    function appendPopupMessage(role, text) {
+        const body = document.getElementById('popup-chat-body');
+        const isUser = role === 'user';
+        const avatarHtml = `
+            <div style="width: 34px; height: 34px; flex-shrink: 0;">
+                <img src="${avatarUrl}" alt="Jive" class="avatar-unboxed">
+            </div>
+        `;
+
+        const processedText = !isUser ? parseCards(text) : text;
+
+        const msgHtml = `
+            <div style="display: flex; gap: 10px; align-items: flex-start; ${isUser ? 'justify-content: flex-end;' : ''}">
+                ${!isUser ? avatarHtml : ''}
+                <div style="background-color: ${isUser ? '#7C3AED' : '#ffffff'}; color: ${isUser ? '#ffffff' : '#1f2937'}; padding: 12px 14px; border-radius: 14px; border: 1px solid ${isUser ? '#7C3AED' : '#e5e7eb'}; max-width: 82%; box-shadow: 0 3px 6px rgba(0,0,0,0.03);">
+                    <div style="margin: 0; font-size: 13px; line-height: 1.45; font-family: sans-serif;">${processedText}</div>
+                </div>
+            </div>
+        `;
+        body.insertAdjacentHTML('beforeend', msgHtml);
+        body.scrollTop = body.scrollHeight;
+    }
+</script>
