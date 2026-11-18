@@ -28,9 +28,9 @@ class ChatAssistantController extends Controller
     public function sendMessage(Request $request)
     {
         $request->validate([
-            'messages' => 'required|array',
+            'messages' => 'required|array|max:50',
             'messages.*.role' => 'required|string|in:user,assistant',
-            'messages.*.content' => 'required|string|max:1000',
+            'messages.*.content' => 'required|string|max:20000',
         ]);
 
         $userMessages = $request->input('messages');
@@ -38,9 +38,33 @@ class ChatAssistantController extends Controller
         $latestLower = strtolower(trim($latestUserMessage));
         $userId = Auth::id();
 
-        // =========================================================================
-        // TIER 1: STORE PROCESS & BRANCH GUIDANCE INTENTS ("HOW TO" QUESTIONS)
-        // =========================================================================
+        
+        // TIER 1: STORE PROCESS, SUNDAY/ADVANCE ADVISORY & BRANCH GUIDANCE INTENTS
+        
+
+        // 1A. Sunday & Advance Order Advisory (Checked BEFORE ticket lookup so "order" doesn't trigger DB tickets)
+        $isSundayOrAdvanceQuery = str_contains($latestLower, 'sunday')
+            || str_contains($latestLower, 'advance')
+            || str_contains($latestLower, 'advanced');
+
+        if ($isSundayOrAdvanceQuery) {
+            return response()->json([
+                'success' => true,
+                'reply'   => "<div style='line-height: 1.6; font-size: 14px;'>"
+                    . "<p style='margin-bottom: 8px;'>📅 <strong>Sunday &amp; Advance Order Advisory:</strong></p>"
+                    . "<ul style='margin: 4px 0 12px 18px; padding: 0; list-style-type: disc;'>"
+                    . "<li><strong>Closed on Sundays:</strong> Both our Salacot and San Jose branches are closed every Sunday for in-store pickups.</li>"
+                    . "<li><strong>Advance Online Scheduling:</strong> You can still submit an advance order ticket online on a Sunday, and select a pickup date between <strong>Monday and Saturday (8:00 AM – 5:30 PM)</strong>.</li>"
+                    . "<li><strong>Preparation Lead Time:</strong> For bulk or customized pasalubong orders, we recommend placing your ticket at least <strong>1–2 days ahead</strong> so our kitchen can prepare your items fresh.</li>"
+                    . "</ul>"
+                    . "<div style='margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;'>"
+                    . "<a href='/orders/create' style='display: inline-block; padding: 8px 14px; background-color: #7c3aed; color: #ffffff; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 13px;'>Schedule Advance Order &rarr;</a>"
+                    . "<a href='/shop' style='display: inline-block; padding: 8px 14px; background-color: #f3e8ff; color: #7c3aed; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 13px;'>Browse Shop Items</a>"
+                    . "</div></div>"
+            ]);
+        }
+
+        // 1B. "How to" Process Guidance
         $isProcessQuery = preg_match('/\b(how|hoe|haw)\s+to\b/', $latestLower) 
             || str_contains($latestLower, 'how do i') 
             || str_contains($latestLower, 'process') 
@@ -118,7 +142,7 @@ class ChatAssistantController extends Controller
             }
         }
 
-        // Branch Info & Operating Hours
+        // 1C. Branch Info & Operating Hours
         $isBranchQuery = (str_contains($latestLower, 'branch') 
             || str_contains($latestLower, 'location') 
             || str_contains($latestLower, 'hours') 
@@ -145,9 +169,9 @@ class ChatAssistantController extends Controller
             ]);
         }
 
-        // =========================================================================
+        
         // TIER 2: DIRECT DATABASE USER TICKETS & ORDERS LOOKUP
-        // =========================================================================
+        
         $extractedId = null;
         if (preg_match('/#([A-Za-z0-9_-]{1,64})/', $latestUserMessage, $matches)) {
             $extractedId = $matches[1];
@@ -257,9 +281,9 @@ class ChatAssistantController extends Controller
                         'reply'   => $this->buildSingleTicketSummary($userTickets->first())
                     ]);
                 } elseif ($userTickets->count() > 1) {
-                    $ticketsText = "Here are your order tickets from our database:<br><br>";
+                    $ticketsText = "Here are your order tickets from our database:\n";
                     foreach ($userTickets as $t) {
-                        $ticketsText .= $this->formatTicketCard($t) . "<br><br>";
+                        $ticketsText .= $this->formatTicketCard($t) . "\n";
                     }
                     return response()->json([
                         'success' => true,
@@ -281,9 +305,9 @@ class ChatAssistantController extends Controller
             }
         }
 
-        // =========================================================================
+        
         // TIER 3: DIRECT DATABASE SHOP CATALOG LOOKUP
-        // =========================================================================
+        
         $isProductQuery = preg_match('/\b(product|products|item|items|catalog|shop|store|sell|selling|menu|available|availb|pasalubong|roll|cake|cookie|package|wedding)\b/i', $latestLower)
             || str_contains($latestLower, 'what do you')
             || str_contains($latestLower, 'chocovron')
@@ -303,7 +327,7 @@ class ChatAssistantController extends Controller
                 }
 
                 if ($products->count() > 0) {
-                    $productOutput = "Here are the products currently available in our shop:<br><br>";
+                    $productOutput = "Here are the products currently available in our shop:\n";
                     foreach ($products as $prod) {
                         $categoryName = ucwords($prod->category ?? 'Pasalubong');
                         $statusNote = ($prod->stock_quantity > 0 && $prod->stock_status !== 'Out of Stock')
@@ -320,7 +344,7 @@ class ChatAssistantController extends Controller
                             . "Branch: Salacot & San Jose\n"
                             . "Description: {$desc}\n"
                             . "Link: {$productUrl}\n"
-                            . "[END_PRODUCT_CARD]\n\n";
+                            . "[END_PRODUCT_CARD]\n";
                     }
 
                     return response()->json([
@@ -333,9 +357,9 @@ class ChatAssistantController extends Controller
             }
         }
 
-        // =========================================================================
+        
         // TIER 4: OPENROUTER LLM FALLBACK WITH FULL LIVE DB CONTEXT INJECTION
-        // =========================================================================
+        
         $dbContext = $this->buildLiveDatabaseContext($userId);
 
         $systemPrompt = <<<EOT
@@ -503,7 +527,7 @@ EOT;
             . "<div>📦 <strong>Items:</strong></div>{$itemListHtml}"
             . "<div>🏪 <strong>Pickup Branch:</strong> {$branch}</div>"
             . "<div>📅 <strong>Pickup Schedule:</strong> {$pickupDate} at {$pickupTime}</div>"
-            . "<div style='margin-bottom: 12px;'>💰 <strong>Total Quote:</strong> {$priceStr}</div>"
+            . "<div style='margin-bottom: 4px;'>💰 <strong>Total Quote:</strong> {$priceStr}</div>"
             . "</div>"
             . $this->formatTicketCard($t);
     }

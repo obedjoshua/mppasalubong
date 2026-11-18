@@ -16,7 +16,7 @@ class SettingsController extends Controller
      */
     public function index()
     {
-        return view('user.settings'); // Update this path to match your actual blade file location
+        return view('user.settings'); 
     }
 
     /**
@@ -44,7 +44,6 @@ class SettingsController extends Controller
 
         // 3. Handle Avatar Image Upload
         if ($request->hasFile('avatar')) {
-            // Optional: Delete old avatar from storage if it exists to save space
             if ($user->avatar && Storage::disk('public')->exists(str_replace('storage/', '', $user->avatar))) {
                 Storage::disk('public')->delete(str_replace('storage/', '', $user->avatar));
             }

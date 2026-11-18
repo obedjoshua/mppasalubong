@@ -10,6 +10,39 @@
             border-radius: 12px;
             background: #111;
             min-height: 280px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #reader {
+            width: 100% !important;
+            min-height: 280px;
+        }
+
+        #reader video {
+            width: 100% !important;
+            height: auto !important;
+            display: block !important;
+            object-fit: cover;
+        }
+
+        .camera-status-msg {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 20px;
+            color: #e5e7eb;
+            z-index: 5;
+            pointer-events: none;
+        }
+
+        .camera-status-msg.has-action {
+            pointer-events: auto;
         }
 
         /* Subtle Scanning Laser Line */
@@ -69,6 +102,9 @@
             <!-- Video Stream Viewport -->
             <div class="scanner-wrapper mb-4">
                 <div class="laser-line" id="laserLine"></div>
+                <div id="cameraStatus" class="camera-status-msg">
+                    <span class="small">Starting camera...</span>
+                </div>
                 <div id="reader"></div>
             </div>
 
@@ -110,20 +146,35 @@
     let isProcessing = false;
     let ticketModalInstance = null;
 
-    function initScanner() {
+    function setCameraStatus(html, showRetry = false) {
+        const statusEl = document.getElementById('cameraStatus');
+        if (!statusEl) return;
+        statusEl.style.display = html ? 'flex' : 'none';
+        statusEl.classList.toggle('has-action', showRetry);
+        statusEl.innerHTML = html;
+    }
+
+    async function startCameraStream() {
         const readerElement = document.getElementById("reader");
         if (!readerElement) return;
 
-        // Move modal to <body> root to eliminate click lock & layout jump
-        const modalElement = document.getElementById('ticketModal');
-        if (modalElement && modalElement.parentNode !== document.body) {
-            document.body.appendChild(modalElement);
+        setCameraStatus('<span class="small">Requesting camera access...</span>');
+
+        if (!window.isSecureContext && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+            document.getElementById('laserLine').style.display = 'none';
+            setCameraStatus(
+                '<p class="small mb-2 text-warning fw-semibold">Camera requires HTTPS or localhost.</p>' +
+                '<span class="small text-muted">Use the manual token box below instead.</span>'
+            );
+            return;
         }
 
-        ticketModalInstance = new bootstrap.Modal(modalElement, {
-            backdrop: 'static',
-            keyboard: false
-        });
+        if (html5QrCode) {
+            try {
+                await html5QrCode.stop();
+                html5QrCode.clear();
+            } catch (e) {}
+        }
 
         html5QrCode = new Html5Qrcode("reader", {
             formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ],
@@ -131,22 +182,52 @@
         });
 
         const config = {
-            fps: 25,
-            qrbox: (viewfinderWidth, viewfinderHeight) => {
-                const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
-                return { width: Math.floor(minEdge * 0.75), height: Math.floor(minEdge * 0.75) };
-            },
-            aspectRatio: 1.333333
+            fps: 15,
+            qrbox: { width: 220, height: 220 }
         };
 
-        Html5Qrcode.getCameras().then(devices => {
-            if (devices && devices.length) {
-                const cameraId = devices[0].id;
-                html5QrCode.start(cameraId, config, onScanSuccess, () => {});
+        try {
+            // Try rear/default camera via facingMode first
+            await html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess, () => {});
+            setCameraStatus('');
+            document.getElementById('laserLine').style.display = 'block';
+        } catch (firstErr) {
+            try {
+                // Fallback to explicit device ID (for desktop webcams)
+                const devices = await Html5Qrcode.getCameras();
+                if (devices && devices.length > 0) {
+                    await html5QrCode.start(devices[0].id, config, onScanSuccess, () => {});
+                    setCameraStatus('');
+                    document.getElementById('laserLine').style.display = 'block';
+                } else {
+                    throw new Error("No camera devices found.");
+                }
+            } catch (secondErr) {
+                console.error("Camera initialization failed:", firstErr, secondErr);
+                document.getElementById('laserLine').style.display = 'none';
+                setCameraStatus(
+                    `<p class="small mb-2 text-warning fw-semibold">Camera unavailable or permission denied.</p>
+                     <button type="button" onclick="startCameraStream()" class="btn btn-sm btn-outline-light">Retry Camera</button>`,
+                    true
+                );
             }
-        }).catch(err => {
-            html5QrCode.start({ facingMode: "user" }, config, onScanSuccess, () => {});
-        });
+        }
+    }
+
+    function initScanner() {
+        const modalElement = document.getElementById('ticketModal');
+        if (modalElement && modalElement.parentNode !== document.body) {
+            document.body.appendChild(modalElement);
+        }
+
+        if (window.bootstrap && modalElement) {
+            ticketModalInstance = new bootstrap.Modal(modalElement, {
+                backdrop: 'static',
+                keyboard: false
+            });
+        }
+
+        startCameraStream();
     }
 
     if (document.readyState === "loading") {
@@ -159,7 +240,9 @@
         if (isProcessing) return;
 
         isProcessing = true;
-        if (html5QrCode) html5QrCode.pause();
+        if (html5QrCode && html5QrCode.isScanning) {
+            html5QrCode.pause();
+        }
         document.getElementById('laserLine').style.display = 'none';
         
         verifyTicket(decodedText);
@@ -209,11 +292,9 @@
             ? ticket.items.map(i => `<li class="small fw-semibold">${i.name || i.title || 'Item'} x${i.quantity || 1} - ₱${parseFloat(i.price || 0).toFixed(2)}</li>`).join('')
             : '<li class="small text-muted">No line items specified.</li>';
 
-        // Check if ticket status is approved/in-production to show deposit
         const isApproved = ['Approved', 'In Production', 'Ready for Pickup', 'Completed'].includes(ticket.status);
         const depositVal = parseFloat(ticket.deposit_required || 0);
 
-        // Conditional rendering for Deposit Required
         const depositBlock = (isApproved && depositVal > 0) ? `
             <div>
                 <div class="small text-muted fw-bold">Deposit Required</div>
@@ -221,7 +302,6 @@
             </div>
         ` : '';
 
-        // Formatted Date
         let scheduleText = 'N/A';
         if (ticket.pickup_date) {
             try {
@@ -266,7 +346,6 @@
             </div>
         `;
 
-        // Direct URL pointing to /staff/tickets/{id}
         const ticketDetailUrl = `/staff/tickets/${ticket.id}`;
 
         footer.innerHTML = `
@@ -294,7 +373,7 @@
             </div>
         `;
 
-        ticketModalInstance.show();
+        if (ticketModalInstance) ticketModalInstance.show();
     }
 
     function updatePaymentStatus(ticketId, statusType) {
@@ -317,7 +396,13 @@
         document.getElementById('laserLine').style.display = 'block';
         isProcessing = false;
         if (ticketModalInstance) ticketModalInstance.hide();
-        if (html5QrCode) html5QrCode.resume();
+        if (html5QrCode) {
+            try {
+                html5QrCode.resume();
+            } catch (e) {
+                startCameraStream();
+            }
+        }
     }
 
     function completeHandoff(ticketId) {

@@ -161,7 +161,6 @@ class PortalController extends Controller
     
         // 1. Restrict delivery to CUSTOMERS ONLY
         $customers = User::where('role', 'customer')->get(); 
-        // Note: If you don't have a 'role' column, use: User::where('is_admin', false)->get();
     
         // 2. Dispatch notification with synced title, message, and banner URL
         foreach ($customers as $customer) {
