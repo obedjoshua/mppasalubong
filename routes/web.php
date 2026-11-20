@@ -80,11 +80,13 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/notifications/{id}', [NotificationController::class, 'show'])->name('notifications.show');
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
     Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
+    Route::get('/orders/active', fn () => view('orders.active'))->name('orders.active');
     Route::get('/orders/ticket/{orderTicket}', [OrderController::class, 'showTicket'])->name('orders.ticket');
     Route::get('/orders/verify/{orderTicket}', [OrderController::class, 'showTicket'])->name('tickets.verify');
 
     // Ticket Payment Redirect & Simulation Routes
     Route::get('/orders/ticket/{orderTicket}/pay', [OrderController::class, 'processPayment'])->name('orders.pay');
+    Route::get('/orders/ticket/{orderTicket}/payment-success', [OrderController::class, 'completeDummyPayment'])->name('orders.payment-success');
     Route::post('/orders/ticket/{orderTicket}/complete-dummy-payment', [OrderController::class, 'completeDummyPayment'])->name('orders.complete-dummy-payment');
 });
 
@@ -225,6 +227,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/checkout/cancel', [App\Http\Controllers\CheckoutController::class, 'cancel'])->name('checkout.cancel');
 });
 
+Route::post('/webhook/xendit', [OrderController::class, 'xenditWebhook'])->name('xendit.webhook');
 Route::post('/webhook/paymongo', [App\Http\Controllers\CheckoutController::class, 'webhook'])->name('paymongo.webhook');
 
 // Admin Purchase Management Routes

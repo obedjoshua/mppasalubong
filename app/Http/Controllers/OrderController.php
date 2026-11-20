@@ -6,11 +6,11 @@ use App\Models\Notification;
 use App\Models\OrderTicket;
 use App\Models\OrderTicketItem;
 use App\Models\Product;
-use App\Services\PayMongoService;
 use App\Services\QrCodeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
@@ -70,7 +70,6 @@ class OrderController extends Controller
      */
     public function store(Request $request)
     {
-        // Default customer_name to authenticated user's name if not provided
         if (!$request->has('customer_name') && Auth::check()) {
             $request->merge(['customer_name' => Auth::user()->name ?? 'Valued Customer']);
         }
@@ -129,6 +128,7 @@ class OrderController extends Controller
                 'preferred_notification_channel' => $preferredChannel,
                 'is_testing'                      => false,
                 'payment_status'                  => 'pending',
+                'amount_paid'                     => 0,
             ]);
 
             foreach ($request->input('items') as $index => $itemData) {
@@ -150,15 +150,12 @@ class OrderController extends Controller
                 if ($request->hasFile("items.{$index}.reference_image")) {
                     $file = $request->file("items.{$index}.reference_image");
 
-                    // 1. Store locally in storage/app/public/tickets
                     $storedPath = $file->store('tickets/' . $ticket->id, 'public');
 
-                    // 2. Base64 Data URI Backup
                     $base64 = base64_encode(file_get_contents($file->getRealPath()));
                     $mime = $file->getMimeType();
                     $imageDataUri = "data:{$mime};base64,{$base64}";
 
-                    // 3. Resilient R2 Upload
                     try {
                         $r2Path = $file->store('tickets/' . $ticket->id, 'r2');
                         if ($r2Path) {
@@ -189,7 +186,6 @@ class OrderController extends Controller
                 ]);
             }
 
-            // Create notification for initial ticket submission
             if ($ticket->user_id) {
                 Notification::create([
                     'user_id' => $ticket->user_id,
@@ -248,7 +244,7 @@ class OrderController extends Controller
     }
 
     /**
-     * Toggle Testing Mode (Dummy Gateway vs Live Gateway).
+     * Toggle Testing Mode (Dummy Gateway vs Live Xendit Gateway).
      */
     public function toggleTesting(OrderTicket $orderTicket)
     {
@@ -256,7 +252,7 @@ class OrderController extends Controller
             'is_testing' => !$orderTicket->is_testing,
         ]);
 
-        $statusText = $orderTicket->is_testing ? 'ENABLED (Dummy Payment Active)' : 'DISABLED (Live PayMongo Active)';
+        $statusText = $orderTicket->is_testing ? 'ENABLED (Dummy Payment Active)' : 'DISABLED (Live Xendit Active)';
         return back()->with('success', "Testing Mode for Ticket #{$orderTicket->id} is now {$statusText}.");
     }
 
@@ -301,7 +297,6 @@ class OrderController extends Controller
                 $orderTicket->status = 'Approved for Payment';
                 $msg = 'Ticket approved for payment!';
 
-                // AUTOMATED NOTIFICATION ON PAYMENT APPROVAL
                 if ($orderTicket->user_id) {
                     Notification::create([
                         'user_id' => $orderTicket->user_id,
@@ -322,7 +317,6 @@ class OrderController extends Controller
                 $orderTicket->status = 'Ready for Pickup';
                 $msg = 'Order marked as Ready for Pickup!';
 
-                // AUTOMATED NOTIFICATION ON PICKUP READY
                 if ($orderTicket->user_id) {
                     Notification::create([
                         'user_id' => $orderTicket->user_id,
@@ -346,83 +340,258 @@ class OrderController extends Controller
     }
 
     /**
-     * Initiate Payment Gateway Redirection (PayMongo Live or Simulated Dummy Gateway).
+     * Initiate Xendit Invoice Checkout (30% Downpayment, Remaining Balance, or 100% Full Payment).
      */
-    public function processPayment(OrderTicket $orderTicket, PayMongoService $payMongo)
+    public function processPayment(Request $request, OrderTicket $orderTicket)
     {
-        if (!in_array(strtolower($orderTicket->status), ['approved for payment', 'approved'])) {
-            return back()->with('error', 'Order ticket must be approved by staff before payment.');
+        $normalizedStatus = strtolower(trim(str_replace('_', ' ', (string) $orderTicket->status)));
+        $payableStatuses = ['approved for payment', 'approved', 'in production', 'preparing', 'ready for pickup', 'completed'];
+
+        if (!in_array($normalizedStatus, $payableStatuses, true)) {
+            return back()->with('error', 'Order ticket must be approved by staff before payment. (Current status: ' . $orderTicket->status . ')');
+        }
+
+        $ticketTotal = (float) ($orderTicket->total_price ?? $orderTicket->total_amount ?? $orderTicket->quoted_price ?? 0);
+
+        if ($ticketTotal <= 0) {
+            return back()->with('error', 'Invalid order amount (₱0.00). Please ask staff to set the quoted price first.');
+        }
+
+        $alreadyPaid = (float) ($orderTicket->amount_paid ?? 0);
+        // Backwards compatibility if an older order was already marked 'paid' before amount_paid existed
+        if ($alreadyPaid <= 0 && strtolower((string) $orderTicket->payment_status) === 'paid') {
+            $alreadyPaid = $ticketTotal;
+        }
+
+        $remainingBalance = max(0, round($ticketTotal - $alreadyPaid, 2));
+
+        if ($remainingBalance <= 0) {
+            return back()->with('success', 'This order ticket is already paid in full!');
         }
 
         if ($orderTicket->is_testing) {
             return view('orders.dummy_payment', ['ticket' => $orderTicket]);
         }
 
+        $requestedType = $request->input('payment_type', $alreadyPaid > 0 ? 'remaining' : 'downpayment');
+
+        if ($alreadyPaid > 0) {
+            // Downpayment already paid: only allow paying the remaining balance
+            $paymentType = 'remaining';
+            $amountToPay = $remainingBalance;
+            $labelSuffix = ' (Remaining 70% Balance)';
+            $lineItemName = "Remaining Balance - Order Ticket #{$orderTicket->id} (Full Quote: ₱" . number_format($ticketTotal, 2) . ")";
+        } elseif ($requestedType === 'full') {
+            $paymentType = 'full';
+            $amountToPay = $ticketTotal;
+            $labelSuffix = ' (Full Payment)';
+            $lineItemName = "Full Payment - Order Ticket #{$orderTicket->id}";
+        } else {
+            $paymentType = 'downpayment';
+            $amountToPay = round($ticketTotal * 0.30, 2);
+            $labelSuffix = ' (30% Downpayment)';
+            $lineItemName = "30% Downpayment - Order Ticket #{$orderTicket->id} (Full Quote: ₱" . number_format($ticketTotal, 2) . ")";
+        }
+
         $items = [];
-        $totalItemsCount = max(1, $orderTicket->items->count());
-        $totalPrice = $orderTicket->total_price ?? $orderTicket->total_amount ?? 0;
-        
-        foreach ($orderTicket->items as $item) {
+        if ($paymentType === 'full' && $orderTicket->items->count() > 0) {
+            $totalItemsCount = max(1, $orderTicket->items->count());
+            foreach ($orderTicket->items as $item) {
+                $items[] = [
+                    'name'     => ucwords(str_replace('_', ' ', $item->item_type ?? 'Custom Item')),
+                    'quantity' => (int) ($item->quantity ?? 1),
+                    'price'    => (float) ($item->price ?? ($amountToPay / $totalItemsCount)),
+                ];
+            }
+        } else {
             $items[] = [
-                'name'        => $item->item_type ?? 'Custom Item',
-                'price'       => (float) ($item->price ?? ($totalPrice / $totalItemsCount)),
-                'quantity'    => $item->quantity ?? 1,
-                'description' => 'Custom Bakery Order Item',
+                'name'     => $lineItemName,
+                'quantity' => 1,
+                'price'    => $amountToPay,
             ];
         }
 
-        if (empty($items)) {
-            $items[] = [
-                'name'        => "Custom Order #{$orderTicket->id}",
-                'price'       => (float) $totalPrice,
-                'quantity'    => 1,
-                'description' => 'Bakery Order Payment',
-            ];
+        $secretKey = config('services.xendit.secret_key') ?: env('XENDIT_SECRET_KEY');
+
+        if (empty($secretKey)) {
+            return back()->with('error', 'Xendit Secret Key is not configured in .env.');
         }
 
-        $checkoutData = [
-            'items'       => $items,
-            'success_url' => route('orders.payment-success', $orderTicket->id),
-            'cancel_url'  => route('orders.ticket', $orderTicket->id),
-            'description' => "Order Ticket #{$orderTicket->id} Payment",
-            'order_id'    => $orderTicket->id,
-            'user_id'     => Auth::id(),
-        ];
+        // Encode payment type and amount in external_id & success_redirect_url
+        $externalId = 'TICKET-' . $orderTicket->id . '-' . strtoupper($paymentType) . '-' . time();
 
-        $result = $payMongo->createCheckoutSession($checkoutData);
+        $response = Http::withBasicAuth($secretKey, '')
+            ->post('https://api.xendit.co/v2/invoices', [
+                'external_id'          => $externalId,
+                'amount'               => $amountToPay,
+                'currency'             => 'PHP',
+                'payer_email'          => $orderTicket->customer_email ?? Auth::user()?->email,
+                'description'          => "Custom Order Ticket #{$orderTicket->id}{$labelSuffix} - Masaganang Pagpapala Pasalubong",
+                'success_redirect_url' => route('orders.payment-success', [
+                    'orderTicket'  => $orderTicket->id,
+                    'payment_type' => $paymentType,
+                    'paid_amount'  => $amountToPay,
+                ]),
+                'failure_redirect_url' => route('orders.ticket', $orderTicket->id),
+                'items'                => $items,
+            ]);
 
-        if (!$result['success']) {
-            return back()->with('error', 'Payment Initialization Failed: ' . $result['error']);
+        if ($response->failed()) {
+            Log::error('Xendit Invoice Creation Failed', [
+                'ticket_id' => $orderTicket->id,
+                'status'    => $response->status(),
+                'body'      => $response->json(),
+            ]);
+
+            $errorMessage = $response->json('message') ?? 'Could not connect to Xendit.';
+            return back()->with('error', 'Xendit Payment Failed: ' . $errorMessage);
         }
 
-        return redirect($result['checkout_url']);
+        $invoiceData = $response->json();
+
+        $orderTicket->update([
+            'payment_gateway'        => 'xendit',
+            'payment_transaction_id' => $invoiceData['id'] ?? null,
+        ]);
+
+        return redirect()->away($invoiceData['invoice_url']);
     }
 
     /**
-     * Process Completed Simulation / Live Payment Callback & Trigger Automated Production.
+     * Process Completed Simulation / Live Xendit Payment Callback & Trigger Automated Production.
      */
-    public function completeDummyPayment(OrderTicket $orderTicket)
+    public function completeDummyPayment(Request $request, OrderTicket $orderTicket)
     {
-        $orderTicket->update([
-            'status'                 => 'In Production',
-            'payment_status'         => 'paid',
-            'payment_gateway'        => $orderTicket->is_testing ? 'dummy_test' : 'paymongo',
-            'payment_transaction_id' => 'TXN-' . strtoupper(Str::random(10)),
-        ]);
+        $ticketTotal = (float) ($orderTicket->total_price ?? $orderTicket->total_amount ?? $orderTicket->quoted_price ?? 0);
+        $alreadyPaid = (float) ($orderTicket->amount_paid ?? 0);
 
-        // AUTOMATED NOTIFICATION FOR COMPLETED PAYMENT
-        if ($orderTicket->user_id) {
-            Notification::create([
-                'user_id' => $orderTicket->user_id,
-                'title'   => 'Payment Confirmed!',
-                'message' => "Payment for ticket #{$orderTicket->id} has been processed. Your order is now In Production!",
-                'link'    => route('orders.ticket', $orderTicket->id),
-                'is_read' => false,
+        if ($alreadyPaid <= 0 && strtolower((string) $orderTicket->payment_status) === 'paid') {
+            $alreadyPaid = $ticketTotal;
+        }
+
+        $paymentType = $request->input('payment_type', $alreadyPaid > 0 ? 'remaining' : 'full');
+        $incomingPaid = (float) $request->input('paid_amount', 0);
+
+        if ($incomingPaid <= 0) {
+            if ($paymentType === 'downpayment' && $alreadyPaid <= 0) {
+                $incomingPaid = round($ticketTotal * 0.30, 2);
+            } else {
+                $incomingPaid = max(0, round($ticketTotal - $alreadyPaid, 2));
+            }
+        }
+
+        if (strtolower((string) $orderTicket->payment_status) !== 'paid') {
+            // Prevent double-counting if user refreshes the payment-success URL
+            if ($paymentType === 'downpayment' && $alreadyPaid > 0) {
+                $newTotalPaid = $alreadyPaid;
+            } else {
+                $newTotalPaid = min($ticketTotal, round($alreadyPaid + $incomingPaid, 2));
+            }
+
+            $isFullyPaid = ($ticketTotal > 0 && $newTotalPaid >= $ticketTotal);
+            $newPaymentStatus = $isFullyPaid ? 'paid' : 'partially_paid';
+
+            // Advance to 'In Production' only if it hasn't moved past approval yet
+            $currentNormalized = strtolower(trim(str_replace('_', ' ', (string) $orderTicket->status)));
+            $nextOrderStatus = in_array($currentNormalized, ['approved', 'approved for payment'], true)
+                ? 'In Production'
+                : $orderTicket->status;
+
+            $orderTicket->update([
+                'status'                 => $nextOrderStatus,
+                'amount_paid'            => $newTotalPaid,
+                'payment_status'         => $newPaymentStatus,
+                'payment_gateway'        => $orderTicket->is_testing ? 'dummy_test' : 'xendit',
+                'payment_transaction_id' => $orderTicket->payment_transaction_id ?: ('TXN-' . strtoupper(Str::random(10))),
             ]);
+
+            if ($orderTicket->user_id) {
+                $notifTitle = $isFullyPaid ? 'Full Payment Confirmed!' : '30% Downpayment Confirmed!';
+                $notifMsg = $isFullyPaid
+                    ? "Full payment for ticket #{$orderTicket->id} has been confirmed. Thank you!"
+                    : "30% downpayment (₱" . number_format($newTotalPaid, 2) . ") for ticket #{$orderTicket->id} has been received. Your order is now In Production!";
+
+                Notification::create([
+                    'user_id' => $orderTicket->user_id,
+                    'title'   => $notifTitle,
+                    'message' => $notifMsg,
+                    'link'    => route('orders.ticket', $orderTicket->id),
+                    'is_read' => false,
+                ]);
+            }
+
+            $flashMsg = $isFullyPaid
+                ? 'Full payment completed! Your order ticket is now Paid in Full.'
+                : '30% downpayment received! Your order is now in production. You can pay the remaining balance anytime.';
+        } else {
+            $flashMsg = 'Payment already confirmed! Your order ticket is Paid in Full.';
         }
 
         return redirect()->route('orders.ticket', $orderTicket->id)
-            ->with('success', 'Payment completed successfully! Your order is now in production.');
+            ->with('success', $flashMsg);
+    }
+
+    /**
+     * Handle Xendit Invoice Paid Webhook Callback.
+     */
+    public function xenditWebhook(Request $request)
+    {
+        $callbackToken = config('services.xendit.callback_token') ?: env('XENDIT_CALLBACK_TOKEN');
+        if ($callbackToken && $request->header('x-callback-token') !== $callbackToken) {
+            return response()->json(['message' => 'Invalid callback token'], 403);
+        }
+
+        $status = strtoupper((string) $request->input('status'));
+        $externalId = (string) $request->input('external_id'); // Format: TICKET-{id}-{TYPE}-{timestamp}
+
+        if (in_array($status, ['PAID', 'SETTLED'], true) && str_starts_with($externalId, 'TICKET-')) {
+            $parts = explode('-', $externalId);
+            $ticketId = $parts[1] ?? null;
+            $invoiceType = strtolower($parts[2] ?? 'full');
+
+            if ($ticketId && ($ticket = OrderTicket::find($ticketId))) {
+                $ticketTotal = (float) ($ticket->total_price ?? $ticket->total_amount ?? $ticket->quoted_price ?? 0);
+                $alreadyPaid = (float) ($ticket->amount_paid ?? 0);
+                $paidAmount = (float) $request->input('paid_amount', $request->input('amount', 0));
+
+                if ($invoiceType === 'downpayment' && $alreadyPaid > 0) {
+                    $newTotalPaid = $alreadyPaid;
+                } else {
+                    $newTotalPaid = min($ticketTotal, round($alreadyPaid + $paidAmount, 2));
+                }
+
+                $isFullyPaid = ($ticketTotal > 0 && $newTotalPaid >= $ticketTotal);
+
+                if (strtolower((string) $ticket->payment_status) !== 'paid') {
+                    $currentNormalized = strtolower(trim(str_replace('_', ' ', (string) $ticket->status)));
+                    $nextOrderStatus = in_array($currentNormalized, ['approved', 'approved for payment'], true)
+                        ? 'In Production'
+                        : $ticket->status;
+
+                    $ticket->update([
+                        'status'                 => $nextOrderStatus,
+                        'amount_paid'            => $newTotalPaid,
+                        'payment_status'         => $isFullyPaid ? 'paid' : 'partially_paid',
+                        'payment_gateway'        => 'xendit',
+                        'payment_transaction_id' => $request->input('id', $ticket->payment_transaction_id),
+                    ]);
+
+                    if ($ticket->user_id) {
+                        Notification::create([
+                            'user_id' => $ticket->user_id,
+                            'title'   => $isFullyPaid ? 'Full Payment Confirmed!' : '30% Downpayment Confirmed!',
+                            'message' => $isFullyPaid
+                                ? "Full payment for ticket #{$ticket->id} has been confirmed via Xendit."
+                                : "30% downpayment for ticket #{$ticket->id} has been confirmed via Xendit. Your order is now In Production!",
+                            'link'    => route('orders.ticket', $ticket->id),
+                            'is_read' => false,
+                        ]);
+                    }
+                }
+            }
+        }
+
+        return response()->json(['received' => true]);
     }
 
     /**

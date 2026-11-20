@@ -9,8 +9,14 @@ class NotificationController extends Controller
 {
     public function index()
     {
-        $notifications = Auth::user()->notifications()->latest()->get();
-        return view('user.notifications', compact('notifications'));
+        $notifications = Auth::user()->notifications()
+            ->latest()
+            ->orderByDesc('id')
+            ->get();
+
+        $unreadCount = $notifications->where('is_read', false)->count();
+
+        return view('user.notifications', compact('notifications', 'unreadCount'));
     }
 
     public function show($id)

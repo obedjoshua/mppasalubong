@@ -172,8 +172,8 @@
         @include('partials.header')
 
         @php
-            $unreadCount = auth()->user()->notifications()->where('is_read', false)->count();
-            $allNotifications = auth()->user()->notifications;
+            $allNotifications = $notifications ?? auth()->user()->notifications()->latest()->orderByDesc('id')->get();
+            $unreadCount = $unreadCount ?? $allNotifications->where('is_read', false)->count();
         @endphp
 
         <!-- Top Header & Action Buttons -->
@@ -222,7 +222,7 @@
                             <span style="font-family: 'Manrope', sans-serif; font-weight: 800; font-size: 14px; color: #334155;">Select All Notifications</span>
                         </div>
 
-                        <!-- Pill Notification Card List -->
+                        <!-- Pill Notification Card List (Newest First) -->
                         <div style="display: flex; flex-direction: column; gap: 16px;">
                             @foreach($allNotifications as $notification)
                                 @php

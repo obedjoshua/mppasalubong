@@ -6,12 +6,9 @@
     <title>My Dashboard | Masaganang Pagpapala Pasalubong</title>
     <link rel="icon" type="image/x-icon" href="{{ asset('images/logo.png') }}">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&display=swap" rel="stylesheet">
-    <link rel="preload" href="{{ asset('css/welcome.css') }}" as="style">
-    <link rel="preload" href="{{ asset('css/loader.css') }}" as="style">
-    <link rel="preload" href="{{ asset('css/dashboard.css') }}" as="style">
-    <link rel="stylesheet" href="{{ asset('css/welcome.css') }}" media="print" onload="this.media='all'">
-    <link rel="stylesheet" href="{{ asset('css/loader.css') }}" media="print" onload="this.media='all'">
-    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}" media="print" onload="this.media='all'">
+    <link rel="stylesheet" href="{{ asset('css/welcome.css') }}?v={{ filemtime(public_path('css/welcome.css')) }}">
+    <link rel="stylesheet" href="{{ asset('css/loader.css') }}?v={{ filemtime(public_path('css/loader.css')) }}">
+    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v={{ filemtime(public_path('css/dashboard.css')) }}">
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
 
@@ -156,6 +153,272 @@
             display: flex;
             justify-content: center;
         }
+
+        /* Badge Unlock Notification Banner */
+        .badge-notification-stack {
+            margin: 18px 20px 0 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .badge-unlock-toast {
+            background: linear-gradient(135deg, #FAF5FF 0%, #F3E8FF 100%);
+            border: 2px solid #8A38F5;
+            border-radius: 16px;
+            padding: 12px 18px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            box-shadow: 0 6px 16px rgba(138, 56, 245, 0.14);
+        }
+
+        .badge-unlock-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .badge-unlock-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            background: #FFFFFF;
+            border: 1.5px solid #D8B4FE;
+            padding: 4px;
+            object-fit: contain;
+            flex-shrink: 0;
+        }
+
+        .badge-unlock-copy strong {
+            display: block;
+            font-family: 'Manrope', sans-serif;
+            font-size: 0.88rem;
+            font-weight: 800;
+            color: #310669;
+        }
+
+        .badge-unlock-copy span {
+            display: block;
+            font-family: 'Manrope', sans-serif;
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: #6B21A8;
+        }
+
+        .badge-unlock-pill {
+            background: #8A38F5;
+            color: #FFFFFF;
+            font-family: 'Manrope', sans-serif;
+            font-size: 0.7rem;
+            font-weight: 800;
+            padding: 4px 10px;
+            border-radius: 999px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            flex-shrink: 0;
+        }
+
+        /* Dashboard Ticket & Order Cards (Matching Orders Index) */
+        .dash-cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 14px;
+            margin-top: 6px;
+        }
+
+        .dash-order-card {
+            background: #FFFFFF;
+            border: 2px solid #E2E8F0;
+            border-radius: 14px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            gap: 12px;
+            box-sizing: border-box;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .dash-order-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 14px rgba(15, 23, 42, 0.06);
+        }
+
+        .dash-order-card.is-active-order,
+        .dash-order-card.is-payment-ready {
+            border-color: #DEF7EC;
+        }
+
+        .dash-order-card.is-completed {
+            border-color: #E9D5FF;
+        }
+
+        .dash-order-card-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 8px;
+        }
+
+        .dash-order-heading {
+            overflow: hidden;
+            min-width: 0;
+        }
+
+        .dash-order-number {
+            font-family: 'Manrope', sans-serif;
+            font-weight: 800;
+            font-size: 0.85rem;
+            display: block;
+        }
+
+        .dash-order-number.is-purple {
+            color: #8A38F5;
+        }
+
+        .dash-order-number.is-green {
+            color: #03543F;
+        }
+
+        .dash-order-title {
+            margin: 4px 0 0 0;
+            font-family: 'Manrope', sans-serif;
+            font-size: 0.98rem;
+            font-weight: 800;
+            color: #1E293B;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .dash-status-pill {
+            text-transform: uppercase;
+            font-family: 'Manrope', sans-serif;
+            font-size: 0.65rem;
+            font-weight: 800;
+            padding: 4px 8px;
+            border-radius: 8px;
+            flex-shrink: 0;
+        }
+
+        .dash-status-pill.pill-pending {
+            background: #FEF3C7;
+            color: #92400E;
+        }
+
+        .dash-status-pill.pill-approved,
+        .dash-status-pill.pill-ready,
+        .dash-status-pill.pill-production {
+            background: #DEF7EC;
+            color: #03543F;
+        }
+
+        .dash-status-pill.pill-completed {
+            background: #F3E8FF;
+            color: #6B21A8;
+        }
+
+        .dash-order-card-mid {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-top: 1px dashed #E2E8F0;
+            padding-top: 10px;
+        }
+
+        .dash-order-card.is-active-order .dash-order-card-mid,
+        .dash-order-card.is-payment-ready .dash-order-card-mid {
+            border-top-color: #DEF7EC;
+        }
+
+        .dash-pickup-icon {
+            padding: 8px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .dash-pickup-icon.icon-purple {
+            background: #F3E8FF;
+            color: #8A38F5;
+        }
+
+        .dash-pickup-icon.icon-green {
+            background: #DEF7EC;
+            color: #03543F;
+        }
+
+        .dash-pickup-meta {
+            overflow: hidden;
+            min-width: 0;
+        }
+
+        .dash-pickup-label {
+            display: block;
+            font-family: 'Manrope', sans-serif;
+            font-size: 0.7rem;
+            color: #64748B;
+            font-weight: 700;
+        }
+
+        .dash-pickup-time {
+            display: block;
+            font-family: 'Manrope', sans-serif;
+            font-size: 0.82rem;
+            font-weight: 800;
+            color: #0F172A;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .dash-order-card-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 2px;
+        }
+
+        .dash-card-btn {
+            flex: 1;
+            display: block;
+            text-align: center;
+            padding: 8px;
+            border-radius: 8px;
+            font-family: 'Manrope', sans-serif;
+            font-weight: 800;
+            font-size: 0.8rem;
+            text-decoration: none;
+            cursor: pointer;
+            box-sizing: border-box;
+            transition: opacity 0.15s ease;
+        }
+
+        .dash-card-btn:hover {
+            opacity: 0.92;
+        }
+
+        .dash-card-btn.btn-purple {
+            background: #8A38F5;
+            color: #FFFFFF;
+            border: none;
+        }
+
+        .dash-card-btn.btn-green {
+            background: #10B981;
+            color: #FFFFFF;
+            border: none;
+        }
+
+        .dash-card-btn.btn-cancel-outline {
+            width: 100%;
+            background: #FEF2F2;
+            color: #DC2626;
+            border: 1px solid #FCA5A5;
+        }
     </style>
 </head>
 <body>
@@ -173,21 +436,95 @@
             if ($hour < 12) { $greeting = 'Good morning'; } 
             elseif ($hour < 18) { $greeting = 'Good afternoon'; }
             
-            $userTickets = Auth::user()->tickets()->with('items')->latest()->get();
+            $user = Auth::user();
+            $userTickets = $user->tickets()->with('items')->latest()->get();
 
-            // Approved tickets move to Order History
-            $approvedOrders = $userTickets->filter(function($t) {
-                return strtolower($t->status) === 'approved';
+            // Statuses that move a ticket into the Order section (In Production or further)
+            $productionAndBeyondStatuses = [
+                'in_production',
+                'in production',
+                'preparing',
+                'ready_for_pickup',
+                'ready for pickup',
+                'ready',
+                'completed',
+            ];
+
+            // Orders in production or further move to the Order section
+            $orderSectionTickets = $userTickets->filter(function($t) use ($productionAndBeyondStatuses) {
+                $status = strtolower(trim($t->status ?? ''));
+                return in_array($status, $productionAndBeyondStatuses, true);
             });
 
-            // Pending tickets stay under Order Inquiry Tickets
-            $pendingTickets = $userTickets->filter(function($t) {
-                return strtolower($t->status) !== 'approved';
+            // Tickets not yet in production remain in Order Inquiry Tickets
+            $inquiryTickets = $userTickets->filter(function($t) use ($productionAndBeyondStatuses) {
+                $status = strtolower(trim($t->status ?? ''));
+                return !in_array($status, $productionAndBeyondStatuses, true);
             });
 
-            $orderCount = $approvedOrders->count();
-            
-            if (Auth::user()->role === 'admin') {
+            // Completed orders increment the counter next to the user's name
+            $completedOrders = $userTickets->filter(function($t) {
+                return strtolower(trim($t->status ?? '')) === 'completed';
+            });
+
+            $orderCount = $completedOrders->count();
+
+            // Evaluate & unlock order milestone badges automatically
+            $allBadges = \App\Models\Badge::all();
+            $existingBadgeIds = $user->badges()->pluck('badges.id')->toArray();
+            $newlyUnlockedBadges = collect();
+
+            foreach ($allBadges as $badge) {
+                $reqParts = explode('_', $badge->slug ?? '');
+                $reqType = $reqParts[0] ?? '';
+                $reqNum = (int) ($reqParts[1] ?? 0);
+
+                if ($reqType === 'order' && $reqNum > 0 && $orderCount >= $reqNum && !in_array($badge->id, $existingBadgeIds, true)) {
+                    $user->badges()->syncWithoutDetaching([$badge->id]);
+                    $existingBadgeIds[] = $badge->id;
+                    $newlyUnlockedBadges->push($badge);
+
+                    // Persist to Laravel database notifications if table exists
+                    try {
+                        if (\Illuminate\Support\Facades\Schema::hasTable('notifications')) {
+                            \Illuminate\Support\Facades\DB::table('notifications')->insert([
+                                'id'              => (string) \Illuminate\Support\Str::uuid(),
+                                'type'            => 'App\\Notifications\\BadgeUnlockedNotification',
+                                'notifiable_type' => get_class($user),
+                                'notifiable_id'   => $user->id,
+                                'data'            => json_encode([
+                                    'title'       => 'New Badge Unlocked: ' . $badge->name,
+                                    'message'     => $badge->description ?: ('You unlocked the ' . $badge->name . ' badge!'),
+                                    'badge_id'    => $badge->id,
+                                    'badge_name'  => $badge->name,
+                                    'icon_path'   => $badge->icon_path,
+                                ]),
+                                'created_at'      => now(),
+                                'updated_at'      => now(),
+                            ]);
+                        }
+                    } catch (\Throwable $e) {
+                        // Fail silently if notifications schema differs
+                    }
+                }
+            }
+
+            // Persist newly unlocked badges into session notification feed so every unlocked badge shows in notifications
+            $sessionBadgeNotifications = session('badge_notifications', []);
+            if ($newlyUnlockedBadges->isNotEmpty()) {
+                foreach ($newlyUnlockedBadges as $unlockedBadge) {
+                    $sessionBadgeNotifications[$unlockedBadge->id] = [
+                        'id'          => $unlockedBadge->id,
+                        'name'        => $unlockedBadge->name,
+                        'description' => $unlockedBadge->description,
+                        'icon_path'   => $unlockedBadge->icon_path,
+                        'unlocked_at' => now()->diffForHumans(),
+                    ];
+                }
+                session(['badge_notifications' => $sessionBadgeNotifications]);
+            }
+
+            if ($user->role === 'admin') {
                 $frameClass = 'frame_exclusive';
             } elseif ($orderCount >= 100) {
                 $frameClass = 'frame_100';
@@ -200,19 +537,45 @@
             }
         @endphp
 
+        <!-- BADGE UNLOCK NOTIFICATIONS -->
+        @if(!empty($sessionBadgeNotifications) || session('success'))
+            <div class="badge-notification-stack">
+                @if(session('success'))
+                    <div style="background: #DEF7EC; border: 2px solid #31C48D; border-radius: 14px; padding: 12px 18px; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                        <span style="font-family: 'Manrope', sans-serif; font-weight: 700; font-size: 0.88rem; color: #03543F;">
+                            {{ session('success') }}
+                        </span>
+                    </div>
+                @endif
+
+                @foreach($sessionBadgeNotifications as $notifBadge)
+                    <div class="badge-unlock-toast">
+                        <div class="badge-unlock-left">
+                            <img src="{{ asset($notifBadge['icon_path']) }}" alt="{{ $notifBadge['name'] }}" class="badge-unlock-icon">
+                            <div class="badge-unlock-copy">
+                                <strong>Badge Unlocked: {{ $notifBadge['name'] }}!</strong>
+                                <span>{{ $notifBadge['description'] ?? 'Congratulations on completing your order milestone!' }}</span>
+                            </div>
+                        </div>
+                        <span class="badge-unlock-pill">New Badge</span>
+                    </div>
+                @endforeach
+            </div>
+        @endif
+
         <!-- 1. GREETING & HEADER AREA -->
         <div class="dashboard-header-area">
             <div class="user-greeting-box">
                 <div style="display: flex; align-items: center; gap: 16px;">
                     <div class="avatar-wrapper">
-                        <img src="{{ !empty(Auth::user()->avatar) ? asset(Auth::user()->avatar) : asset('images/default-avatar.jpeg') }}" alt="Profile" class="profile-avatar" >
-                        <img src="{{ asset('images/frames/' . (Auth::user()->selected_frame ?: $frameClass) . '.png') }}" alt="Frame" class="frame-overlay" >
+                        <img src="{{ !empty($user->avatar) ? asset($user->avatar) : asset('images/default-avatar.jpeg') }}" alt="Profile" class="profile-avatar" >
+                        <img src="{{ asset('images/frames/' . ($user->selected_frame ?: $frameClass) . '.png') }}" alt="Frame" class="frame-overlay" >
                     </div>
 
                     <div style="display: flex; flex-direction: column;">
                         <div class="greeting-time">{{ $greeting }}</div>
                         <div class="name-score-wrapper">
-                            <h1 class="user-display-name">{{ explode(' ', Auth::user()->name)[0] }}</h1>
+                            <h1 class="user-display-name">{{ explode(' ', $user->name)[0] }}</h1>
                             
                             <div class="order-count-wrapper">
                                 <span class="user-score">{{ $orderCount }}</span>
@@ -222,7 +585,7 @@
                                         <line x1="12" y1="16" x2="12" y2="12"></line>
                                         <line x1="12" y1="8" x2="12.01" y2="8"></line>
                                     </svg>
-                                    <span class="tooltip-text">Total Approved Orders</span>
+                                    <span class="tooltip-text">Total Completed Orders</span>
                                 </div>
                             </div>
                         </div>
@@ -247,55 +610,122 @@
         <!-- 3. MAIN DASHBOARD CONTENT GRID (ORDER TICKETS FIRST) -->
         <div class="dashboard-content-grid">
             
-            <!-- Left Column: Tickets & History -->
+            <!-- Left Column: Tickets & Orders -->
             <div class="dash-column">
-
-                <!-- Order Inquiry Tickets Card -->
                 <div class="dash-card">
                     <div class="dash-card-header">
                         <h2 class="dash-card-title">Order Inquiry Tickets</h2>
-                        <a href="{{ route('tickets.index') }}" class="dash-link">View All ({{ $pendingTickets->count() }}) →</a>
+                        <a href="{{ route('tickets.index') }}" class="dash-link">View All ({{ $inquiryTickets->count() }}) →</a>
                     </div>
-                    @if($pendingTickets->isEmpty())
+                    @if($inquiryTickets->isEmpty())
                         <p class="empty-state-text">You have no pending order inquiry tickets.</p>
                     @else
-                        <div class="ticket-preview-list">
-                            @foreach($pendingTickets->take(3) as $ticket)
-                                <div class="ticket-preview-item">
-                                    <div class="ticket-info">
-                                        <span class="ticket-id">Ticket #{{ $ticket->id }}</span>
-                                        <span class="ticket-details">
-                                            {{ $ticket->items->pluck('item_type')->map(fn($t) => ucfirst(str_replace('_', ' ', $t)))->join(', ') }}
+                        <div class="dash-cards-grid">
+                            @foreach($inquiryTickets->take(4) as $ticket)
+                                @php
+                                    $isApprovedForPayment = in_array(strtolower(trim($ticket->status ?? '')), ['approved', 'approved for payment'], true);
+                                @endphp
+                                <div class="dash-order-card {{ $isApprovedForPayment ? 'is-payment-ready' : 'is-inquiry' }}">
+                                    <div class="dash-order-card-top">
+                                        <div class="dash-order-heading">
+                                            <span class="dash-order-number {{ $isApprovedForPayment ? 'is-green' : 'is-purple' }}">
+                                                Ticket #{{ $ticket->id }}
+                                            </span>
+                                            <h3 class="dash-order-title">
+                                                {{ $ticket->items->pluck('item_type')->map(fn($t) => ucfirst(str_replace('_', ' ', $t)))->join(', ') }}
+                                            </h3>
+                                        </div>
+                                        <span class="dash-status-pill {{ $isApprovedForPayment ? 'pill-approved' : 'pill-pending' }}">
+                                            {{ $ticket->status }}
                                         </span>
                                     </div>
-                                    <a href="{{ route('orders.ticket', $ticket->id) }}" class="ticket-view-btn">View Ticket</a>
+
+                                    <div class="dash-order-card-mid">
+                                        <div class="dash-pickup-icon {{ $isApprovedForPayment ? 'icon-green' : 'icon-purple' }}">
+                                            <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                            </svg>
+                                        </div>
+                                        <div class="dash-pickup-meta">
+                                            <span class="dash-pickup-label">Pickup Date</span>
+                                            <span class="dash-pickup-time">
+                                                {{ \Carbon\Carbon::parse($ticket->pickup_date)->format('M j, Y') }} at {{ $ticket->pickup_time }}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div class="dash-order-card-actions">
+                                        <a href="{{ route('orders.ticket', $ticket->id) }}" class="dash-card-btn {{ $isApprovedForPayment ? 'btn-green' : 'btn-purple' }}">
+                                            View Ticket
+                                        </a>
+                                        @if(in_array(strtolower(trim($ticket->status ?? '')), ['pending', 'pending staff review'], true))
+                                            <form action="{{ route('orders.destroy', $ticket->id) }}" method="POST" style="flex: 1;" onsubmit="return confirm('Are you sure you want to cancel this inquiry?');">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="dash-card-btn btn-cancel-outline">
+                                                    Cancel
+                                                </button>
+                                            </form>
+                                        @endif
+                                    </div>
                                 </div>
                             @endforeach
                         </div>
                     @endif
                 </div>
 
-                <!-- Approved Order History Card -->
+                <!-- Orders Section (Tickets In Production or Further - Same Card Layout as Orders Index) -->
                 <div class="dash-card">
                     <div class="dash-card-header">
-                        <h2 class="dash-card-title">Order History</h2>
-                        @if(!$approvedOrders->isEmpty())
-                            <a href="{{ route('orders.index') }}" class="dash-link">View All ({{ $approvedOrders->count() }}) →</a>
+                        <h2 class="dash-card-title">Orders</h2>
+                        @if(!$orderSectionTickets->isEmpty())
+                            <a href="{{ route('orders.active') }}" class="dash-link">View All ({{ $orderSectionTickets->count() }}) →</a>
                         @endif
                     </div>
-                    @if($approvedOrders->isEmpty())
-                        <p class="empty-state-text">You have no active or recent approved orders.</p>
+                    @if($orderSectionTickets->isEmpty())
+                        <p class="empty-state-text">You have no orders currently in production or completed.</p>
                     @else
-                        <div class="ticket-preview-list">
-                            @foreach($approvedOrders->take(3) as $order)
-                                <div class="ticket-preview-item approved-item">
-                                    <div class="ticket-info">
-                                        <span class="ticket-id approved-id">Order #MP-{{ $order->id }}</span>
-                                        <span class="ticket-details">
-                                            {{ $order->items->pluck('item_type')->map(fn($t) => ucfirst(str_replace('_', ' ', $t)))->join(', ') }}
+                        <div class="dash-cards-grid">
+                            @foreach($orderSectionTickets->take(4) as $order)
+                                @php
+                                    $normalizedOrderStatus = strtolower(trim(str_replace('_', ' ', $order->status ?? '')));
+                                    $isCompleted = $normalizedOrderStatus === 'completed';
+                                    $isReady = in_array($normalizedOrderStatus, ['ready for pickup', 'ready'], true);
+                                @endphp
+                                <div class="dash-order-card {{ $isCompleted ? 'is-completed' : 'is-active-order' }}">
+                                    <div class="dash-order-card-top">
+                                        <div class="dash-order-heading">
+                                            <span class="dash-order-number {{ $isCompleted ? 'is-purple' : 'is-green' }}">
+                                                Order #MP-{{ $order->id }}
+                                            </span>
+                                            <h3 class="dash-order-title">
+                                                {{ $order->items->pluck('item_type')->map(fn($t) => ucfirst(str_replace('_', ' ', $t)))->join(', ') }}
+                                            </h3>
+                                        </div>
+                                        <span class="dash-status-pill {{ $isCompleted ? 'pill-completed' : ($isReady ? 'pill-ready' : 'pill-production') }}">
+                                            {{ ucwords(str_replace('_', ' ', $order->status)) }}
                                         </span>
                                     </div>
-                                    <a href="{{ route('orders.ticket', $order->id) }}" class="ticket-view-btn approved-btn">Confirmed Receipt</a>
+
+                                    <div class="dash-order-card-mid">
+                                        <div class="dash-pickup-icon {{ $isCompleted ? 'icon-purple' : 'icon-green' }}">
+                                            <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                            </svg>
+                                        </div>
+                                        <div class="dash-pickup-meta">
+                                            <span class="dash-pickup-label">Pickup Date</span>
+                                            <span class="dash-pickup-time">
+                                                {{ \Carbon\Carbon::parse($order->pickup_date)->format('M j, Y') }} at {{ $order->pickup_time }}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div class="dash-order-card-actions">
+                                        <a href="{{ route('orders.ticket', $order->id) }}" class="dash-card-btn {{ $isCompleted ? 'btn-purple' : 'btn-green' }}">
+                                            {{ $isCompleted ? 'View Receipt' : 'Track Order' }}
+                                        </a>
+                                    </div>
                                 </div>
                             @endforeach
                         </div>
@@ -315,7 +745,7 @@
                             <a href="#" class="dash-link">Edit</a>
                         </div>
                         <h4>Default Shipping Address</h4>
-                        <p>{{ Auth::user()->name }}<br>
+                        <p>{{ $user->name }}<br>
                         123 Pasalubong Street, Brgy. San Jose<br>
                         Natividad, Ilocos Region 2446<br>
                         Philippines</p>
@@ -333,7 +763,7 @@
                                 <svg viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
                                 Google
                             </div>
-                            @if(Auth::user()->google_id)
+                            @if($user->google_id)
                                 <span class="account-status status-connected">Connected</span>
                             @else
                                 <a href="{{ route('auth.google') }}" class="account-status status-disconnected">Link Account</a>
@@ -346,7 +776,7 @@
                                 <svg viewBox="0 0 48 48"><path fill="#18acfe" d="M24 4C12.954 4 4 12.954 4 24c0 10.028 7.378 18.337 17.062 19.789v-13.68h-4.856V24h4.856v-4.498c0-5.112 3.036-7.859 7.643-7.859 2.228 0 4.551.398 4.551.398v5h-2.564c-2.525 0-3.313 1.568-3.313 3.176V24h5.672l-.907 6.109h-4.765v13.68C36.622 42.337 44 34.028 44 24 44 12.954 35.046 4 24 4z"/></svg>
                                 Facebook
                             </div>
-                            @if(Auth::user()->facebook_id)
+                            @if($user->facebook_id)
                                 <span class="account-status status-connected">Connected</span>
                             @else
                                 <a href="{{ route('auth.facebook') }}" class="account-status status-disconnected">Link Account</a>
@@ -361,8 +791,8 @@
                                     Phone
                                 </div>
                                 
-                                @if(Auth::user()->phone)
-                                    <span class="account-status status-connected">+63{{ Auth::user()->phone }}</span>
+                                @if($user->phone)
+                                    <span class="account-status status-connected">+63{{ $user->phone }}</span>
                                 @else
                                     <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                                         <div class="phone-input-wrapper">
@@ -388,20 +818,15 @@
                     Badge Collection
                 </h2>
                 <span style="font-family: 'Manrope', sans-serif; font-size: 13px; font-weight: 800; color: #6B7280;">
-                    {{ Auth::user()->badges()->count() }} / {{ \App\Models\Badge::count() }} Unlocked
+                    {{ count($existingBadgeIds) }} / {{ $allBadges->count() }} Unlocked
                 </span>
             </div>
 
             <!-- Responsive 3-to-6 Column Grid for Badges -->
             <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 10px;">
-                @php
-                    $allBadges = \App\Models\Badge::all();
-                    $unlockedIds = Auth::user()->badges->pluck('id')->toArray();
-                @endphp
-
                 @forelse($allBadges as $badge)
                     @php 
-                        $isUnlocked = in_array($badge->id, $unlockedIds); 
+                        $isUnlocked = in_array($badge->id, $existingBadgeIds, true); 
                         $reqParts = explode('_', $badge->slug);
                         $reqType = $reqParts[0];
                         $reqNum = $reqParts[1] ?? 0;

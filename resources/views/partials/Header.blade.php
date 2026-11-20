@@ -22,11 +22,15 @@
                 </svg>
             </a>
 
-            <a href="{{ route('notifications.index') }}" wire:navigate class="icon-btn" title="Notifications" style="text-decoration: none; color: inherit;">
+            <a href="{{ route('notifications.index') }}" wire:navigate class="icon-btn" title="Notifications" style="text-decoration: none; color: inherit; position: relative;">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 65%; height: 65%;">
                     <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
                     <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
                 </svg>
+                @php $unreadNotifCount = Auth::user()->notifications()->where('is_read', false)->count(); @endphp
+                @if($unreadNotifCount > 0)
+                    <span id="notif-count" class="notif-badge" style="position: absolute; top: -6px; right: -6px; background: #ffffff; color: #000000; border: 1.5px solid #000000; font-size: 10px; font-weight: 800; min-width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; padding: 0 4px; box-sizing: border-box; box-shadow: 0 2px 4px rgba(0,0,0,0.15);">{{ $unreadNotifCount }}</span>
+                @endif
             </a>
         @endauth
 
@@ -39,7 +43,7 @@
             @if(Auth::check())
                 @php $cartCount = count(session('cart', [])); @endphp
                 @if($cartCount > 0)
-                    <span id="cart-count" class="cart-badge" style="position: absolute; top: -6px; right: -6px; background: var(--purple-main); color: white; font-size: 10px; font-weight: 800; min-width: 18px; height: 18px; border-radius: 9px; display: flex; align-items: center; justify-content: center; padding: 0 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">{{ $cartCount }}</span>
+                    <span id="cart-count" class="cart-badge" style="position: absolute; top: -6px; right: -6px; background: #ffffff; color: #000000; border: 1.5px solid #000000; font-size: 10px; font-weight: 800; min-width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; padding: 0 4px; box-sizing: border-box; box-shadow: 0 2px 4px rgba(0,0,0,0.15);">{{ $cartCount }}</span>
                 @endif
             @endif
         </a>

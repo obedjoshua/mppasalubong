@@ -3,8 +3,7 @@
 @section('title', 'Ticket #' . $ticket->id)
 
 @push('styles')
-    <link rel="preload" href="{{ asset('css/tickets-show.css') }}" as="style">
-    <link rel="stylesheet" href="{{ asset('css/tickets-show.css') }}" media="print" onload="this.media='all'">
+    <link rel="stylesheet" href="{{ asset('css/tickets-show.css') }}?v={{ time() }}">
     <style>
         .lottie-review-banner {
             display: flex;
@@ -99,10 +98,54 @@
             padding: 16px;
             border-radius: 12px;
             display: flex;
+            flex-wrap: wrap;
             align-items: center;
             justify-content: space-between;
             margin-bottom: 20px;
             gap: 12px;
+        }
+        .payment-partial-banner {
+            background: #fffbeb;
+            border: 1px solid #fde68a;
+            border-left: 5px solid #f59e0b;
+            padding: 16px;
+            border-radius: 12px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            gap: 12px;
+        }
+        .payment-paid-banner {
+            background: #ecfdf5;
+            border: 1px solid #6ee7b7;
+            border-left: 5px solid #10b981;
+            padding: 14px 18px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            gap: 12px;
+        }
+        .paid-full-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #059669;
+            color: #ffffff;
+            font-size: 0.8rem;
+            font-weight: 800;
+            padding: 6px 14px;
+            border-radius: 999px;
+            letter-spacing: 0.03em;
+        }
+        .payment-action-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
         }
         .btn-pay-now {
             background: #059669;
@@ -110,6 +153,8 @@
             font-weight: 800;
             padding: 10px 18px;
             border-radius: 8px;
+            border: none;
+            cursor: pointer;
             text-decoration: none;
             font-size: 0.9rem;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
@@ -117,6 +162,36 @@
         }
         .btn-pay-now:hover {
             background: #047857;
+        }
+        .btn-pay-remaining {
+            background: #d97706;
+            color: #ffffff;
+            font-weight: 800;
+            padding: 10px 18px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 0.9rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: background 0.2s ease;
+        }
+        .btn-pay-remaining:hover {
+            background: #b45309;
+        }
+        .btn-pay-full {
+            background: #ffffff;
+            color: #065f46;
+            border: 1.5px solid #059669;
+            font-weight: 700;
+            padding: 9px 14px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 0.85rem;
+            transition: background 0.2s ease;
+        }
+        .btn-pay-full:hover {
+            background: #d1fae5;
         }
         .messenger-share-bar {
             background: #ffffff;
@@ -145,6 +220,97 @@
         .btn-messenger-share:hover {
             background: #1d4ed8;
         }
+
+        /* Download QR Pass Button */
+        .btn-download-qr {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            margin-top: 10px;
+            padding: 7px 14px;
+            background: #8a38f5;
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(138, 56, 245, 0.25);
+            transition: all 0.2s ease;
+            width: 100%;
+            max-width: 165px;
+        }
+
+        .btn-download-qr:hover {
+            background: #7225d8;
+            transform: translateY(-1px);
+        }
+
+        .btn-download-qr:active {
+            transform: translateY(0);
+        }
+
+        /* Full-Viewport Locked Reference Modal */
+        html.modal-open,
+        body.modal-open {
+            overflow: hidden !important;
+            height: 100% !important;
+            overscroll-behavior: none !important;
+        }
+
+        body.modal-open .ticket-page-wrapper {
+            pointer-events: none !important;
+            user-select: none !important;
+        }
+
+        #itemSliderOverlay.dark-overlay-modal {
+            display: none;
+            position: fixed !important;
+            inset: 0 !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            width: 100vw !important;
+            height: 100dvh !important;
+            min-height: 100vh !important;
+            background: rgba(15, 23, 42, 0.8) !important;
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            z-index: 99999 !important;
+            align-items: center !important;
+            justify-content: center !important;
+            padding: 24px !important;
+            box-sizing: border-box !important;
+            overflow: hidden !important;
+            overscroll-behavior: contain !important;
+            pointer-events: auto !important;
+        }
+
+        #itemSliderOverlay.dark-overlay-modal.active {
+            display: flex !important;
+        }
+
+        #itemSliderOverlay .overlay-card-wrapper {
+            position: relative !important;
+            max-width: 920px !important;
+            width: 100% !important;
+            max-height: calc(100dvh - 48px) !important;
+            overflow-y: auto !important;
+            overscroll-behavior: contain !important;
+            margin: 0 auto !important;
+            z-index: 100000 !important;
+        }
+
+        @media (max-width: 640px) {
+            #itemSliderOverlay.dark-overlay-modal {
+                padding: 12px !important;
+            }
+            #itemSliderOverlay .overlay-card-wrapper {
+                max-height: calc(100dvh - 24px) !important;
+            }
+        }
     </style>
 @endpush
 
@@ -169,6 +335,26 @@
 @endpush
 
 @section('content')
+@php
+    $normalizedStatus = strtolower(trim(str_replace(' ', '_', $ticket->status ?? '')));
+    $productionStatuses = ['in_production', 'preparing', 'ready_for_pickup', 'completed'];
+    $showOrderTracker = in_array($normalizedStatus, $productionStatuses, true);
+
+    $quotedTotal = (float) ($ticket->total_price ?? $ticket->total_amount ?? $ticket->quoted_price ?? 0);
+    $amountPaid = (float) ($ticket->amount_paid ?? 0);
+
+    // Backwards compatibility for legacy orders already marked 'paid' without amount_paid set
+    if ($amountPaid <= 0 && strtolower((string) $ticket->payment_status) === 'paid') {
+        $amountPaid = $quotedTotal;
+    }
+
+    $downpaymentAmount = round($quotedTotal * 0.30, 2);
+    $remainingBalance = max(0, round($quotedTotal - $amountPaid, 2));
+    $isFullyPaid = ($quotedTotal > 0 && $remainingBalance <= 0) || strtolower((string) $ticket->payment_status) === 'paid';
+    $hasPartialPayment = ($quotedTotal > 0 && $amountPaid > 0 && $remainingBalance > 0);
+    $isApprovedForPayment = in_array(strtolower(trim(str_replace('_', ' ', (string) $ticket->status))), ['approved', 'approved for payment'], true);
+@endphp
+
 <div class="ticket-page-wrapper">
 
     <div class="ticket-nav-bar">
@@ -184,13 +370,19 @@
         </div>
     @endif
 
+    @if(session('error'))
+        <div style="background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; font-size: 0.9rem; font-weight: bold;">
+            {{ session('error') }}
+        </div>
+    @endif
+
     {{-- STEP 6: ADMIN TESTING CONTROL TOGGLE --}}
     @if(auth()->check() && method_exists(auth()->user(), 'isAdmin') && auth()->user()->isAdmin())
         <div class="admin-test-bar">
             <div>
                 <strong style="font-size: 0.85rem; color: #334155;">Testing Mode:</strong>
                 <span class="admin-test-badge {{ $ticket->is_testing ? 'testing' : 'live' }}">
-                    {{ $ticket->is_testing ? 'DUMMY GATEWAY ACTIVE' : 'LIVE PAYMONGO ACTIVE' }}
+                    {{ $ticket->is_testing ? 'DUMMY GATEWAY ACTIVE' : 'LIVE XENDIT ACTIVE' }}
                 </span>
             </div>
             <form action="{{ route('admin.tickets.toggle-testing', $ticket->id) }}" method="POST">
@@ -202,19 +394,63 @@
         </div>
     @endif
 
-    {{-- STEP 5: JOLLIBEE-STYLE ORDER STATUS TRACKER PARTIAL --}}
-    @include('partials.order-status-tracker', ['ticket' => $ticket])
+    {{-- STEP 5: ORDER STATUS TRACKER (ONLY VISIBLE ONCE ORDER ENTERS PRODUCTION) --}}
+    @if($showOrderTracker)
+        @include('partials.order-status-tracker', ['ticket' => $ticket])
+    @endif
 
-    {{-- STEP 6: PAYMENT REDIRECT BANNER FOR APPROVED TICKETS --}}
-    @if(in_array(strtolower($ticket->status), ['approved', 'approved for payment']))
+    {{-- PAYMENT STATUS & ACTION BANNERS --}}
+    @if($isFullyPaid && $quotedTotal > 0)
+        {{-- 1. PAID IN FULL BANNER --}}
+        <div class="payment-paid-banner">
+            <div>
+                <h4 style="margin: 0 0 2px 0; color: #065f46; font-size: 1rem; font-weight: bold;">Payment Completed</h4>
+                <p style="margin: 0; font-size: 0.82rem; color: #047857;">
+                    Total Paid: <strong>₱{{ number_format($quotedTotal, 2) }}</strong> &bull; No remaining balance due.
+                </p>
+            </div>
+            <span class="paid-full-pill">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width: 15px; height: 15px;">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                PAID IN FULL
+            </span>
+        </div>
+    @elseif($hasPartialPayment)
+        {{-- 2. DOWNPAYMENT PAID — REMAINING BALANCE BANNER --}}
+        <div class="payment-partial-banner">
+            <div>
+                <h4 style="margin: 0 0 2px 0; color: #92400e; font-size: 1rem; font-weight: bold;">Downpayment Paid — Balance Remaining</h4>
+                <p style="margin: 0; font-size: 0.82rem; color: #78350f;">
+                    Full Quote: <strong>₱{{ number_format($quotedTotal, 2) }}</strong> &bull;
+                    Paid: <strong>₱{{ number_format($amountPaid, 2) }}</strong> &bull;
+                    Remaining Balance: <strong>₱{{ number_format($remainingBalance, 2) }}</strong>
+                </p>
+            </div>
+            <div class="payment-action-group">
+                <a href="{{ route('orders.pay', ['orderTicket' => $ticket->id, 'payment_type' => 'remaining']) }}" class="btn-pay-remaining">
+                    Pay Remaining Balance (₱{{ number_format($remainingBalance, 2) }})
+                </a>
+            </div>
+        </div>
+    @elseif($isApprovedForPayment)
+        {{-- 3. INITIAL APPROVAL — 30% DOWNPAYMENT OR FULL PAYMENT --}}
         <div class="payment-redirect-banner">
             <div>
                 <h4 style="margin: 0 0 2px 0; color: #065f46; font-size: 1rem; font-weight: bold;">Order Approved for Payment!</h4>
-                <p style="margin: 0; font-size: 0.8rem; color: #047857;">Proceed to complete your payment and activate kitchen production.</p>
+                <p style="margin: 0; font-size: 0.8rem; color: #047857;">
+                    Full Quoted Price: <strong>₱{{ number_format($quotedTotal, 2) }}</strong> &bull;
+                    Required 30% Downpayment: <strong>₱{{ number_format($downpaymentAmount, 2) }}</strong>
+                </p>
             </div>
-            <a href="{{ route('orders.pay', $ticket->id) }}" class="btn-pay-now">
-                Pay Now (₱{{ number_format($ticket->total_price ?? $ticket->total_amount ?? 0, 2) }})
-            </a>
+            <div class="payment-action-group">
+                <a href="{{ route('orders.pay', ['orderTicket' => $ticket->id, 'payment_type' => 'downpayment']) }}" class="btn-pay-now">
+                    Pay 30% Downpayment (₱{{ number_format($downpaymentAmount, 2) }})
+                </a>
+                <a href="{{ route('orders.pay', ['orderTicket' => $ticket->id, 'payment_type' => 'full']) }}" class="btn-pay-full">
+                    Pay Full (₱{{ number_format($quotedTotal, 2) }})
+                </a>
+            </div>
         </div>
     @endif
 
@@ -372,6 +608,19 @@
                         <strong style="font-family: 'Recoleta-Bold', serif;">Location:</strong>
                         <span>{{ $ticket->location_address }}</span>
                     @endif
+
+                    @if($quotedTotal > 0)
+                        <strong style="font-family: 'Recoleta-Bold', serif;">Payment Status:</strong>
+                        <span>
+                            @if($isFullyPaid)
+                                <strong style="color: #059669;">Paid in Full (₱{{ number_format($quotedTotal, 2) }})</strong>
+                            @elseif($hasPartialPayment)
+                                <strong style="color: #d97706;">Partially Paid (₱{{ number_format($amountPaid, 2) }} / ₱{{ number_format($quotedTotal, 2) }})</strong>
+                            @else
+                                <span style="color: #64748b;">Unpaid (Quoted: ₱{{ number_format($quotedTotal, 2) }})</span>
+                            @endif
+                        </span>
+                    @endif
                 </div>
 
                 <table>
@@ -496,17 +745,27 @@
                     $fallbackQrUrl = $qrData['fallback_url'] ?? '';
                 @endphp
                 <div class="qr-wrapper-block">
-                    <div class="qr-container">
+                    <div class="qr-container" id="qrSourceContainer">
                         @if(isset($qrData) && $qrData['mode'] === 'inline_svg')
                             {!! $qrData['content'] !!}
                         @else
                             <img id="ticketQrImage" 
                                  src="{{ $qrData['primary_url'] ?? '#' }}" 
+                                 crossorigin="anonymous"
                                  alt="Verification QR" 
                                  onerror="this.onerror=null; this.src='{{ $fallbackQrUrl }}';" />
                         @endif
                     </div>
                     <small style="font-size: 0.725rem; color: #64748b; font-weight: bold;">Scan for staff verification</small>
+
+                    <button type="button" class="btn-download-qr" onclick="downloadTicketQrCard()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
+                        <span>Download QR Pass</span>
+                    </button>
                 </div>
 
                 <div style="margin-top: 20px; font-size: 0.775rem; color: #64748b; line-height: 1.3;">
@@ -550,7 +809,7 @@
             @foreach($ticket->items as $idx => $item)
                 <button type="button" 
                         class="tab-btn {{ $idx === 0 ? 'active-tab' : '' }}" 
-                        onclick="switchTab('{{ $idx }}')" 
+                        onclick="switchTab({{ $idx }})" 
                         id="tabBtn_{{ $idx }}">
                     Item {{ $idx + 1 }}: {{ ucfirst(str_replace('_', ' ', $item->item_type)) }}
                 </button>
@@ -641,33 +900,69 @@
         }
     }
 
+    function blockBackgroundScroll(e) {
+        const modalCard = document.querySelector('#itemSliderOverlay .overlay-card-wrapper');
+        if (modalCard && modalCard.contains(e.target)) {
+            return;
+        }
+        e.preventDefault();
+    }
+
     function openSliderOverlay() {
         const modal = document.getElementById('itemSliderOverlay');
-        if (modal) {
-            activeScrollY = window.scrollY;
-            modal.classList.add('active');
-            
-            document.body.style.position = 'fixed';
-            document.body.style.top = `-${activeScrollY}px`;
-            document.body.style.width = '100%';
-            document.body.classList.add('modal-open');
-            document.documentElement.classList.add('modal-open');
+        const pageWrapper = document.querySelector('.ticket-page-wrapper');
+        if (!modal) return;
+
+        activeScrollY = window.scrollY || window.pageYOffset;
+
+        if (modal.parentElement !== document.body) {
+            document.body.appendChild(modal);
         }
+
+        modal.classList.add('active');
+
+        if (pageWrapper) {
+            pageWrapper.setAttribute('inert', '');
+            pageWrapper.setAttribute('aria-hidden', 'true');
+        }
+
+        document.documentElement.classList.add('modal-open');
+        document.body.classList.add('modal-open');
+        document.body.style.position = 'fixed';
+        document.body.style.top = `-${activeScrollY}px`;
+        document.body.style.left = '0';
+        document.body.style.right = '0';
+        document.body.style.width = '100%';
+
+        document.addEventListener('wheel', blockBackgroundScroll, { passive: false });
+        document.addEventListener('touchmove', blockBackgroundScroll, { passive: false });
     }
 
     function closeSliderOverlay(event) {
         if (!event || event.target.id === 'itemSliderOverlay') {
             const modal = document.getElementById('itemSliderOverlay');
-            if (modal) {
-                modal.classList.remove('active');
-                
-                document.body.style.position = '';
-                document.body.style.top = '';
-                document.body.style.width = '';
-                document.body.classList.remove('modal-open');
-                document.documentElement.classList.remove('modal-open');
-                window.scrollTo(0, activeScrollY);
+            const pageWrapper = document.querySelector('.ticket-page-wrapper');
+            if (!modal) return;
+
+            modal.classList.remove('active');
+
+            if (pageWrapper) {
+                pageWrapper.removeAttribute('inert');
+                pageWrapper.removeAttribute('aria-hidden');
             }
+
+            document.documentElement.classList.remove('modal-open');
+            document.body.classList.remove('modal-open');
+            document.body.style.position = '';
+            document.body.style.top = '';
+            document.body.style.left = '';
+            document.body.style.right = '';
+            document.body.style.width = '';
+
+            document.removeEventListener('wheel', blockBackgroundScroll);
+            document.removeEventListener('touchmove', blockBackgroundScroll);
+
+            window.scrollTo(0, activeScrollY);
         }
     }
 
@@ -679,6 +974,190 @@
         document.querySelectorAll('.tab-content-panel').forEach((panel, i) => {
             panel.classList.toggle('active-panel', i === index);
         });
+    }
+
+    async function downloadTicketQrCard() {
+        const btn = document.querySelector('.btn-download-qr span');
+        const originalLabel = btn ? btn.innerText : 'Download QR Pass';
+        if (btn) btn.innerText = 'Generating...';
+
+        try {
+            const ticketId = @json($ticket->id);
+            const customerName = @json($ticket->customer_name ?? 'Customer');
+            const pickupBranch = @json($ticket->pickup_branch === 'san_jose' ? 'San Jose Branch' : 'Main Shop');
+            const pickupDate = @json(\Carbon\Carbon::parse($ticket->pickup_date)->format('F j, Y'));
+            const pickupTime = @json($ticket->pickup_time ?? '');
+
+            const canvas = document.createElement('canvas');
+            const width = 600;
+            const height = 820;
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+
+            function roundRect(x, y, w, h, r) {
+                ctx.beginPath();
+                ctx.moveTo(x + r, y);
+                ctx.arcTo(x + w, y, x + w, y + h, r);
+                ctx.arcTo(x + w, y + h, x, y + h, r);
+                ctx.arcTo(x, y + h, x, y, r);
+                ctx.arcTo(x, y, x + w, y, r);
+                ctx.closePath();
+            }
+
+            // 1. Soft Background
+            ctx.fillStyle = '#f8fafc';
+            ctx.fillRect(0, 0, width, height);
+
+            // 2. Main White Card Container
+            ctx.save();
+            ctx.shadowColor = 'rgba(15, 23, 42, 0.10)';
+            ctx.shadowBlur = 24;
+            ctx.shadowOffsetY = 8;
+            ctx.fillStyle = '#ffffff';
+            roundRect(36, 36, width - 72, height - 72, 28);
+            ctx.fill();
+            ctx.restore();
+
+            // Card Border
+            ctx.strokeStyle = '#e2e8f0';
+            ctx.lineWidth = 2;
+            roundRect(36, 36, width - 72, height - 72, 28);
+            ctx.stroke();
+
+            // 3. Purple Header Banner
+            ctx.save();
+            roundRect(36, 36, width - 72, 155, 28);
+            ctx.clip();
+            const headerGrad = ctx.createLinearGradient(36, 36, width - 36, 191);
+            headerGrad.addColorStop(0, '#7e22ce');
+            headerGrad.addColorStop(1, '#9333ea');
+            ctx.fillStyle = headerGrad;
+            ctx.fillRect(36, 36, width - 72, 155);
+            ctx.restore();
+
+            // Header Text
+            ctx.fillStyle = '#ffffff';
+            ctx.textAlign = 'center';
+            ctx.font = 'bold 23px Georgia, serif';
+            ctx.fillText('Masaganang Pagpapala Pasalubong', width / 2, 92);
+
+            ctx.fillStyle = '#f3e8ff';
+            ctx.font = '600 14px sans-serif';
+            ctx.fillText('OFFICIAL PICKUP VERIFICATION PASS', width / 2, 120);
+
+            // Ticket ID Pill
+            ctx.fillStyle = '#ffffff';
+            roundRect(width / 2 - 115, 138, 230, 34, 17);
+            ctx.fill();
+            ctx.fillStyle = '#6b21a8';
+            ctx.font = 'bold 16px monospace';
+            ctx.fillText(`TICKET #${ticketId}`, width / 2, 160);
+
+            // 4. QR Frame Box
+            const qrBoxSize = 310;
+            const qrBoxX = (width - qrBoxSize) / 2;
+            const qrBoxY = 222;
+
+            ctx.fillStyle = '#ffffff';
+            ctx.strokeStyle = '#d8b4fe';
+            ctx.lineWidth = 3;
+            roundRect(qrBoxX, qrBoxY, qrBoxSize, qrBoxSize, 22);
+            ctx.fill();
+            ctx.stroke();
+
+            // Extract QR Image (handles inline SVG or <img>)
+            const qrContainer = document.getElementById('qrSourceContainer');
+            const svgEl = qrContainer ? qrContainer.querySelector('svg') : null;
+            const imgEl = qrContainer ? qrContainer.querySelector('img') : null;
+
+            const qrImage = await new Promise((resolve, reject) => {
+                if (svgEl) {
+                    const clonedSvg = svgEl.cloneNode(true);
+                    clonedSvg.setAttribute('width', '260');
+                    clonedSvg.setAttribute('height', '260');
+                    const svgData = new XMLSerializer().serializeToString(clonedSvg);
+                    const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+                    const url = URL.createObjectURL(svgBlob);
+                    const img = new Image();
+                    img.onload = () => {
+                        URL.revokeObjectURL(url);
+                        resolve(img);
+                    };
+                    img.onerror = reject;
+                    img.src = url;
+                } else if (imgEl) {
+                    const img = new Image();
+                    img.crossOrigin = 'anonymous';
+                    img.onload = () => resolve(img);
+                    img.onerror = () => resolve(imgEl);
+                    img.src = imgEl.currentSrc || imgEl.src;
+                } else {
+                    reject(new Error('QR element not found'));
+                }
+            });
+
+            ctx.drawImage(qrImage, qrBoxX + 25, qrBoxY + 25, 260, 260);
+
+            // Helper text below QR
+            ctx.fillStyle = '#64748b';
+            ctx.font = 'bold 14px sans-serif';
+            ctx.fillText('Present this QR code to staff upon pickup', width / 2, qrBoxY + qrBoxSize + 28);
+
+            // 5. Dashed Ticket Perforation Divider
+            ctx.save();
+            ctx.setLineDash([8, 8]);
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(64, 585);
+            ctx.lineTo(width - 64, 585);
+            ctx.stroke();
+            ctx.restore();
+
+            // 6. Order Summary Details Block
+            ctx.fillStyle = '#f8fafc';
+            roundRect(64, 605, width - 128, 122, 14);
+            ctx.fill();
+
+            const rows = [
+                ['Customer:', customerName],
+                ['Branch:', pickupBranch],
+                ['Schedule:', `${pickupDate} • ${pickupTime}`]
+            ];
+
+            rows.forEach(([label, val], idx) => {
+                const y = 636 + idx * 32;
+                ctx.textAlign = 'left';
+                ctx.fillStyle = '#64748b';
+                ctx.font = 'bold 14px sans-serif';
+                ctx.fillText(label, 86, y);
+
+                ctx.textAlign = 'right';
+                ctx.fillStyle = '#0f172a';
+                ctx.font = 'bold 14px sans-serif';
+                ctx.fillText(String(val).slice(0, 34), width - 86, y);
+            });
+
+            // 7. Footer Note
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#7e22ce';
+            ctx.font = 'italic bold 14px Georgia, serif';
+            ctx.fillText('~ Salamat sa iyong pagtangkilik! ~', width / 2, 756);
+
+            // Trigger PNG Download
+            const link = document.createElement('a');
+            link.download = `Ticket-${ticketId}-QR-Pass.png`;
+            link.href = canvas.toDataURL('image/png');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } catch (err) {
+            console.error('QR Download Error:', err);
+            alert('Could not generate the QR image. Please try taking a screenshot or refreshing the page.');
+        } finally {
+            if (btn) btn.innerText = originalLabel;
+        }
     }
 
     document.addEventListener('keydown', function(event) {

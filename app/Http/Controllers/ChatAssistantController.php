@@ -489,7 +489,7 @@ EOT;
 
         $ticketUrl = Route::has('orders.show')
             ? route('orders.show', $t)
-            : "/orders/{$t->getRouteKey()}";
+            : "/orders/ticket/{$t->getRouteKey()}";
 
         return "[TICKET_CARD]\n"
             . "ID: #{$displayId}\n"
