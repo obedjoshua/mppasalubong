@@ -24,6 +24,7 @@ use App\Http\Controllers\WalkInOrderController;
 use App\Http\Controllers\WishlistController;
 use App\Http\Middleware\EnsureStaffTerminalUnlocked;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -65,6 +66,16 @@ Route::get('/email/verify/{id}/{hash}', function (EmailVerificationRequest $requ
     return redirect()->route('orders.index');
 })->middleware(['auth', 'signed'])->name('verification.verify');
 
+Route::post('/email/verification-notification', function (Request $request) {
+    if ($request->user()->hasVerifiedEmail()) {
+        return redirect()->route('orders.index');
+    }
+
+    $request->user()->sendEmailVerificationNotification();
+
+    return back()->with('status', 'verification-link-sent');
+})->middleware(['auth', 'throttle:6,1'])->name('verification.send');
+
 // Public Guest Ticket View (Shareable via Messenger, Privacy-Masked)
 Route::get('/tickets/guest/{id}', [OrderController::class, 'guestView'])->name('tickets.guest-view');
 
@@ -104,7 +115,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/dashboard/verify-otp', [ProfileController::class, 'verifyOtp'])->name('profile.otp.verify');
 
     Route::post('/wishlist/toggle', [WishlistController::class, 'toggle'])->name('wishlist.toggle');
-    
+
     // User Notification Batch & Reading Routes
     Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('user.notifications.mark-all-read');
     Route::delete('/notifications/batch-delete', [NotificationController::class, 'batchDelete'])->name('user.notifications.batch-delete');
