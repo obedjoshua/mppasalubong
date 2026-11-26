@@ -81,11 +81,47 @@ class PortalController extends Controller
         return back()->with("success", "Post visibility updated.");
     }
 
-    public function users()
+    public function users(Request $request)
     {
-        $users = User::query()->orderBy("name")->paginate(30);
+        $filters = $request->validate([
+            "q"    => ["nullable", "string", "max:100"],
+            "role" => ["nullable", "in:all,customer,staff,developer,admin"],
+            "sort" => ["nullable", "in:name_asc,name_desc,role_asc,role_desc,newest"],
+        ]);
 
-        return view("portals.users", compact("users"));
+        $query = User::query();
+
+        if (! empty($filters["q"])) {
+            $search = $filters["q"];
+            $query->where(function ($sub) use ($search): void {
+                $sub->where("name", "like", "%{$search}%")
+                    ->orWhere("email", "like", "%{$search}%");
+            });
+        }
+
+        if (! empty($filters["role"]) && $filters["role"] !== "all") {
+            $query->where("role", $filters["role"]);
+        }
+
+        match ($filters["sort"] ?? "name_asc") {
+            "name_desc" => $query->orderByDesc("name"),
+            "role_asc"  => $query->orderBy("role")->orderBy("name"),
+            "role_desc" => $query->orderByDesc("role")->orderBy("name"),
+            "newest"    => $query->latest(),
+            default     => $query->orderBy("name"),
+        };
+
+        $users = $query->paginate(30)->withQueryString();
+
+        $roleCounts = [
+            "all"       => User::count(),
+            "customer"  => User::where("role", "customer")->count(),
+            "staff"     => User::where("role", "staff")->count(),
+            "developer" => User::where("role", "developer")->count(),
+            "admin"     => User::where("role", "admin")->count(),
+        ];
+
+        return view("portals.users", compact("users", "filters", "roleCounts"));
     }
 
     public function updateUserRole(Request $request, User $user): RedirectResponse
@@ -113,7 +149,7 @@ class PortalController extends Controller
     public function purchases()
     {
         $relations = array_values(array_filter(
-            ['user', 'product'],
+            ["user", "product"],
             fn (string $relation): bool => method_exists(Purchase::class, $relation)
         ));
 
@@ -130,7 +166,7 @@ class PortalController extends Controller
     public function showPurchase(Purchase $purchase)
     {
         $relations = array_values(array_filter(
-            ['user', 'product'],
+            ["user", "product"],
             fn (string $relation): bool => method_exists($purchase, $relation)
         ));
 
