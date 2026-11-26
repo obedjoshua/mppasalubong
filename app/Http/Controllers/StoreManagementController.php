@@ -4,9 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Product;
 use App\Models\PromotionalBanner;
+use App\Models\Purchase;
 use Closure;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -16,9 +18,126 @@ class StoreManagementController extends Controller
 {
     public function index(): View
     {
+        $allProducts = Product::withTrashed()->get();
+        $banners = PromotionalBanner::orderBy('sort_order')->orderBy('id')->get();
+        $purchases = Purchase::with(['user', 'product'])->latest()->get();
+
+        // Store summary metrics
+        $storeStats = [
+            'activeProducts'   => $allProducts->whereNull('deleted_at')->where('is_active', true)->count(),
+            'lowOrOutOfStock'  => $allProducts->whereNull('deleted_at')->whereIn('stock_status', ['Low Stock', 'Out of Stock'])->count(),
+            'activeBanners'    => $banners->where('is_active', true)->count(),
+            'totalShopRevenue' => (float) $purchases->where('status', '!=', 'cancelled')->sum(function (Purchase $purchase): float {
+                $amount = $purchase->getAttribute('total_amount') ?? $purchase->getAttribute('total_price') ?? $purchase->getAttribute('amount') ?? 0;
+
+                return (float) $amount;
+            }),
+        ];
+
+        // Category inventory breakdown for bar chart
+        $categoryBreakdown = $allProducts->whereNull('deleted_at')
+            ->groupBy(fn (Product $p): string => $p->category ?: 'Uncategorized')
+            ->map(fn ($items, string $category): array => [
+                'category' => $category,
+                'count'    => $items->count(),
+                'stock'    => (int) $items->sum('stock_quantity'),
+            ])
+            ->values();
+
+        // Daily shop sales/activity series for stock-style timeframe chart
+        $salesByDay = $purchases
+            ->filter(fn (Purchase $p): bool => $p->created_at !== null && $p->status !== 'cancelled')
+            ->groupBy(fn (Purchase $p): string => $p->created_at->format('Y-m-d'))
+            ->map(function ($dayPurchases, string $dateStr): array {
+                $revenue = $dayPurchases->sum(function (Purchase $p): float {
+                    return (float) ($p->getAttribute('total_amount') ?? $p->getAttribute('total_price') ?? $p->getAttribute('amount') ?? 0);
+                });
+
+                return [
+                    'timestamp' => Carbon::parse($dateStr)->toIso8601String(),
+                    'label'     => Carbon::parse($dateStr)->format('M j'),
+                    'orders'    => $dayPurchases->count(),
+                    'revenue'   => round((float) $revenue, 2),
+                ];
+            })
+            ->sortKeys()
+            ->values();
+
+        // Daily Store Logs grouped by Y-m-d (combines Purchases, Product catalog updates, & Banner updates)
+        $dailyLogs = [];
+
+        foreach ($purchases as $purchase) {
+            if (! $purchase->created_at) {
+                continue;
+            }
+            $dateKey = $purchase->created_at->format('Y-m-d');
+            $customerName = method_exists($purchase, 'user') && $purchase->user
+                ? $purchase->user->name
+                : 'Customer';
+            $productName = method_exists($purchase, 'product') && $purchase->product
+                ? $purchase->product->name
+                : 'Shop Item';
+            $amount = (float) ($purchase->getAttribute('total_amount') ?? $purchase->getAttribute('total_price') ?? $purchase->getAttribute('amount') ?? 0);
+
+            $dailyLogs[$dateKey][] = [
+                'type'   => 'Purchase',
+                'badge'  => 'purchase',
+                'time'   => $purchase->created_at->format('H:i'),
+                'title'  => "Order #{$purchase->id} · {$productName}",
+                'detail' => "{$customerName} · ₱" . number_format($amount, 2) . ' (' . ucfirst((string) ($purchase->status ?? 'pending')) . ')',
+                'url'    => route('admin.purchases.show', $purchase->id),
+            ];
+        }
+
+        foreach ($allProducts as $product) {
+            $logDate = $product->updated_at ?? $product->created_at;
+            if (! $logDate) {
+                continue;
+            }
+            $dateKey = $logDate->format('Y-m-d');
+            $actionLabel = $product->trashed()
+                ? 'Removed from catalog'
+                : ($product->created_at && $product->created_at->equalTo($logDate) ? 'Added to catalog' : 'Catalog / stock updated');
+
+            $dailyLogs[$dateKey][] = [
+                'type'   => 'Product',
+                'badge'  => 'product',
+                'time'   => $logDate->format('H:i'),
+                'title'  => $product->name,
+                'detail' => "{$actionLabel} · Stock: {$product->stock_quantity} ({$product->stock_status})",
+                'url'    => $product->trashed() ? route('admin.store.index') : route('admin.store.products.edit', $product->id),
+            ];
+        }
+
+        foreach ($banners as $banner) {
+            $logDate = $banner->updated_at ?? $banner->created_at;
+            if (! $logDate) {
+                continue;
+            }
+            $dateKey = $logDate->format('Y-m-d');
+
+            $dailyLogs[$dateKey][] = [
+                'type'   => 'Banner',
+                'badge'  => 'banner',
+                'time'   => $logDate->format('H:i'),
+                'title'  => "Hero Banner: {$banner->title}",
+                'detail' => ($banner->is_active ? 'Published' : 'Hidden') . " · {$banner->layout} layout",
+                'url'    => route('admin.store.banners.edit', $banner->id),
+            ];
+        }
+
+        foreach ($dailyLogs as $dateKey => $entries) {
+            usort($entries, fn (array $a, array $b): int => strcmp($b['time'], $a['time']));
+            $dailyLogs[$dateKey] = $entries;
+        }
+
         return view('admin.store.index', [
-            'products' => Product::withTrashed()->latest()->paginate(12),
-            'banners' => PromotionalBanner::orderBy('sort_order')->orderBy('id')->get(),
+            'products'          => Product::withTrashed()->latest()->paginate(12),
+            'banners'           => $banners,
+            'storeStats'        => $storeStats,
+            'categoryBreakdown' => $categoryBreakdown,
+            'salesSeries'       => $salesByDay,
+            'dailyLogs'         => $dailyLogs,
         ]);
     }
 
