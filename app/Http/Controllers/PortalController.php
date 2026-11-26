@@ -3,15 +3,18 @@
 namespace App\Http\Controllers;
 
 use App\Models\ApiRequestMetric;
+use App\Models\Notification;
+use App\Models\OrderTicket;
 use App\Models\Post;
 use App\Models\Purchase;
 use App\Models\User;
-use App\Notifications\PromotionalBroadcastNotification;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Symfony\Component\Process\Process;
 use Throwable;
 
@@ -109,19 +112,36 @@ class PortalController extends Controller
 
     public function purchases()
     {
-        $purchases = Purchase::with(["user", "product"])->latest()->paginate(20);
+        $relations = array_values(array_filter(
+            ['user', 'product'],
+            fn (string $relation): bool => method_exists(Purchase::class, $relation)
+        ));
+
+        $query = Purchase::query()->latest();
+        if (! empty($relations)) {
+            $query->with($relations);
+        }
+
+        $purchases = $query->paginate(20);
 
         return view("portals.purchases", compact("purchases"));
     }
 
     public function showPurchase(Purchase $purchase)
     {
-        $purchase->load(["user", "product"]);
+        $relations = array_values(array_filter(
+            ['user', 'product'],
+            fn (string $relation): bool => method_exists($purchase, $relation)
+        ));
+
+        if (! empty($relations)) {
+            $purchase->load($relations);
+        }
 
         return view("portals.purchase-detail", compact("purchase"));
     }
 
-    public function updatePurchaseStatus(Request $request, Purchase $purchase)
+    public function updatePurchaseStatus(Request $request, Purchase $purchase): RedirectResponse
     {
         $validated = $request->validate([
             "status" => ["required", "in:pending,completed,cancelled"],
@@ -142,46 +162,46 @@ class PortalController extends Controller
     }
 
     /**
-     * Dispatch Promotional Broadcast via DB Notification and Email to All Users
+     * Dispatch Promotional Broadcast via DB Notification to All Customers
      */
-    public function sendPromotionalBroadcast(Request $request)
+    public function sendPromotionalBroadcast(Request $request): RedirectResponse
     {
-        $request->validate([
+        $validated = $request->validate([
             'title'        => 'required|string|max:255',
             'description'  => 'required|string',
             'banner_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120',
         ]);
-    
+
         // Handle uploaded banner image or select fallback
         $bannerUrl = asset('images/community_header_01.png');
         if ($request->hasFile('banner_image')) {
             $path = $request->file('banner_image')->store('promotions', 'public');
-            $bannerUrl = Storage::url($path);
+            $bannerUrl = Storage::url((string) $path);
         }
-    
-        // 1. Restrict delivery to CUSTOMERS ONLY
-        $customers = User::where('role', 'customer')->get(); 
-    
-        // 2. Dispatch notification with synced title, message, and banner URL
+
+        // Restrict delivery to customers only
+        $customers = User::where('role', 'customer')->get();
+
+        // Dispatch notification with synced title, message, and banner URL
         foreach ($customers as $customer) {
             Notification::create([
                 'user_id'      => $customer->id,
-                'title'        => $request->title,
-                'message'      => $request->description,
+                'title'        => $validated['title'],
+                'message'      => $validated['description'],
                 'type'         => 'promotional',
                 'banner_image' => $bannerUrl,
                 'is_read'      => false,
                 'data'         => [
-                    'title'        => $request->title,
-                    'message'      => $request->description,
-                    'body'         => $request->description,
+                    'title'        => $validated['title'],
+                    'message'      => $validated['description'],
+                    'body'         => $validated['description'],
                     'type'         => 'promotional',
                     'banner_image' => $bannerUrl,
                     'action_url'   => route('notifications.index'),
                 ],
             ]);
         }
-    
+
         return redirect()->back()->with('success', 'Promotional broadcast successfully sent to all customers!');
     }
 
@@ -194,9 +214,40 @@ class PortalController extends Controller
             "cache" => $this->checkCache(),
         ];
 
+        $calendarOrders = OrderTicket::with(['user', 'items'])
+            ->whereNotNull('pickup_date')
+            ->orderBy('pickup_time')
+            ->get()
+            ->groupBy(fn (OrderTicket $ticket): string => Carbon::parse($ticket->pickup_date)->format('Y-m-d'))
+            ->map(function ($tickets) {
+                return $tickets->map(function (OrderTicket $ticket): array {
+                    $itemsSummary = $ticket->items
+                        ->pluck('item_type')
+                        ->map(fn ($type): string => ucfirst(str_replace('_', ' ', (string) $type)))
+                        ->join(', ');
+
+                    $customerName = $ticket->user !== null
+                        ? $ticket->user->name
+                        : ((string) ($ticket->getAttribute('customer_name') ?? 'Guest Customer'));
+
+                    $amount = (float) ($ticket->getAttribute('total_price') ?? $ticket->getAttribute('quoted_price') ?? 0);
+
+                    return [
+                        'id'          => $ticket->id,
+                        'customer'    => $customerName,
+                        'items'       => $itemsSummary !== '' ? $itemsSummary : 'Custom Order',
+                        'pickup_time' => (string) ($ticket->pickup_time ?? 'TBD'),
+                        'status'      => ucwords(str_replace('_', ' ', (string) ($ticket->status ?? 'pending'))),
+                        'total'       => number_format($amount, 2),
+                        'url'         => route('staff.tickets.show', $ticket->id),
+                    ];
+                })->values();
+            });
+
         return [
             "portal" => $portal,
             "liveData" => $liveData,
+            "calendarOrders" => $calendarOrders,
             "userCounts" => [
                 "all" => User::count(),
                 "customers" => User::where("role", "customer")->count(),
@@ -221,19 +272,41 @@ class PortalController extends Controller
             'pgsql' => 'to_char(date_trunc(\'hour\', created_at), \'YYYY-MM-DD HH24:00\')',
             default => 'DATE_FORMAT(created_at, "%Y-%m-%d %H:00")',
         };
+
+        // 24-hour rolling buckets
         $hourlyCounts = (clone $metrics)
             ->selectRaw("$hourExpression as hour, COUNT(*) as total")
             ->groupBy("hour")
             ->pluck("total", "hour");
-        $traffic = collect(range(23, 0))->map(function (int $hoursAgo) use ($hourlyCounts) {
+
+        $traffic = collect(range(23, 0))->map(function (int $hoursAgo) use ($hourlyCounts): array {
             $hour = now()->startOfHour()->subHours($hoursAgo);
             $key = $hour->format("Y-m-d H:00");
 
             return [
+                "timestamp" => $hour->toIso8601String(),
                 "label" => $hour->format("H:i"),
                 "count" => (int) $hourlyCounts->get($key, 0),
             ];
         })->values();
+
+        // Persistent lifetime hourly history (never wiped across 15s refreshes)
+        $lifetimeHistory = ApiRequestMetric::query()
+            ->selectRaw("$hourExpression as hour, COUNT(*) as total")
+            ->groupBy("hour")
+            ->orderBy("hour")
+            ->get()
+            ->map(function ($row): array {
+                /** @var object{hour: string, total: int|string} $row */
+                $parsed = Carbon::parse($row->hour);
+
+                return [
+                    "timestamp" => $parsed->toIso8601String(),
+                    "label" => $parsed->format("M j, H:i"),
+                    "count" => (int) $row->total,
+                ];
+            })
+            ->values();
 
         return [
             "updatedAt" => now()->toIso8601String(),
@@ -245,7 +318,8 @@ class PortalController extends Controller
                 "averageDuration" => (int) round((clone $metrics)->avg("duration_ms") ?? 0),
             ],
             "traffic" => $traffic,
-            "feed" => (clone $metrics)->latest()->limit(8)->get()->map(fn (ApiRequestMetric $metric) => [
+            "history" => $lifetimeHistory,
+            "feed" => (clone $metrics)->latest()->limit(8)->get()->map(fn (ApiRequestMetric $metric): array => [
                 "time" => $metric->created_at?->format("H:i:s"),
                 "method" => $metric->method,
                 "path" => $metric->path,
