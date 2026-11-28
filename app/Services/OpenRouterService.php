@@ -12,7 +12,7 @@ class OpenRouterService
 
     public function __construct()
     {
-        $this->apiKey = config('services.openrouter.api_key', env('OPENROUTER_API_KEY'));
+        $this->apiKey = (string) config('services.openrouter.api_key', env('OPENROUTER_API_KEY', ''));
         $this->baseUrl = 'https://openrouter.ai/api/v1/chat/completions';
     }
 
