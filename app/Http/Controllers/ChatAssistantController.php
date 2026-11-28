@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ApiRequestMetric;
 use App\Models\OrderTicket;
 use App\Models\Product;
 use App\Services\OpenRouterService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -25,8 +27,10 @@ class ChatAssistantController extends Controller
         return view('chat.full_page');
     }
 
-    public function sendMessage(Request $request)
+    public function sendMessage(Request $request): JsonResponse
     {
+        $startedAt = microtime(true);
+
         $request->validate([
             'messages' => 'required|array|max:50',
             'messages.*.role' => 'required|string|in:user,assistant',
@@ -38,9 +42,26 @@ class ChatAssistantController extends Controller
         $latestLower = strtolower(trim($latestUserMessage));
         $userId = Auth::id();
 
-        
+        $respondAndTrack = function (string $reply, string $tier = 'general', int $status = 200) use ($request, $startedAt): JsonResponse {
+            try {
+                $routePath = ltrim($request->path(), '/') ?: 'api/chat/assistant';
+                ApiRequestMetric::create([
+                    'method'      => $request->method(),
+                    'path'        => "{$routePath} [{$tier}]",
+                    'status'      => $status,
+                    'duration_ms' => (int) max(1, round((microtime(true) - $startedAt) * 1000)),
+                ]);
+            } catch (\Throwable $e) {
+                Log::warning('Failed to record chatbot API metric: ' . $e->getMessage());
+            }
+
+            return response()->json([
+                'success' => $status < 400,
+                'reply'   => $reply,
+            ], $status);
+        };
+
         // TIER 1: STORE PROCESS, SUNDAY/ADVANCE ADVISORY & BRANCH GUIDANCE INTENTS
-        
 
         // 1A. Sunday & Advance Order Advisory (Checked BEFORE ticket lookup so "order" doesn't trigger DB tickets)
         $isSundayOrAdvanceQuery = str_contains($latestLower, 'sunday')
@@ -48,146 +69,144 @@ class ChatAssistantController extends Controller
             || str_contains($latestLower, 'advanced');
 
         if ($isSundayOrAdvanceQuery) {
-            return response()->json([
-                'success' => true,
-                'reply'   => "<div style='line-height: 1.6; font-size: 14px;'>"
-                    . "<p style='margin-bottom: 8px;'>📅 <strong>Sunday &amp; Advance Order Advisory:</strong></p>"
-                    . "<ul style='margin: 4px 0 12px 18px; padding: 0; list-style-type: disc;'>"
-                    . "<li><strong>Closed on Sundays:</strong> Both our Salacot and San Jose branches are closed every Sunday for in-store pickups.</li>"
-                    . "<li><strong>Advance Online Scheduling:</strong> You can still submit an advance order ticket online on a Sunday, and select a pickup date between <strong>Monday and Saturday (8:00 AM – 5:30 PM)</strong>.</li>"
-                    . "<li><strong>Preparation Lead Time:</strong> For bulk or customized pasalubong orders, we recommend placing your ticket at least <strong>1–2 days ahead</strong> so our kitchen can prepare your items fresh.</li>"
-                    . "</ul>"
-                    . "<div style='margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;'>"
-                    . "<a href='/orders/create' style='display: inline-block; padding: 8px 14px; background-color: #7c3aed; color: #ffffff; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 13px;'>Schedule Advance Order &rarr;</a>"
-                    . "<a href='/shop' style='display: inline-block; padding: 8px 14px; background-color: #f3e8ff; color: #7c3aed; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 13px;'>Browse Shop Items</a>"
-                    . "</div></div>"
-            ]);
+            return $respondAndTrack(
+                "<div style='line-height: 1.6; font-size: 14px;'>"
+                . "<p style='margin-bottom: 8px;'>📅 <strong>Sunday &amp; Advance Order Advisory:</strong></p>"
+                . "<ul style='margin: 4px 0 12px 18px; padding: 0; list-style-type: disc;'>"
+                . "<li><strong>Closed on Sundays:</strong> Both our Salacot and San Jose branches are closed every Sunday for in-store pickups.</li>"
+                . "<li><strong>Advance Online Scheduling:</strong> You can still submit an advance order ticket online on a Sunday, and select a pickup date between <strong>Monday and Saturday (8:00 AM – 5:30 PM)</strong>.</li>"
+                . "<li><strong>Preparation Lead Time:</strong> For bulk or customized pasalubong orders, we recommend placing your ticket at least <strong>1–2 days ahead</strong> so our kitchen can prepare your items fresh.</li>"
+                . "</ul>"
+                . "<div style='margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;'>"
+                . "<a href='/orders/create' style='display: inline-block; padding: 8px 14px; background-color: #7c3aed; color: #ffffff; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 13px;'>Schedule Advance Order &rarr;</a>"
+                . "<a href='/shop' style='display: inline-block; padding: 8px 14px; background-color: #f3e8ff; color: #7c3aed; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 13px;'>Browse Shop Items</a>"
+                . "</div></div>",
+                'tier1-advisory'
+            );
         }
 
         // 1B. "How to" Process Guidance
-        $isProcessQuery = preg_match('/\b(how|hoe|haw)\s+to\b/', $latestLower) 
-            || str_contains($latestLower, 'how do i') 
-            || str_contains($latestLower, 'process') 
+        $isProcessQuery = preg_match('/\b(how|hoe|haw)\s+to\b/', $latestLower)
+            || str_contains($latestLower, 'how do i')
+            || str_contains($latestLower, 'process')
             || str_contains($latestLower, 'steps')
             || str_contains($latestLower, 'instruction')
             || str_contains($latestLower, 'guide');
 
         if ($isProcessQuery) {
             if (str_contains($latestLower, 'pay') || str_contains($latestLower, 'payment') || str_contains($latestLower, 'deposit') || str_contains($latestLower, 'downpayment')) {
-                return response()->json([
-                    'success' => true,
-                    'reply'   => "<div style='line-height: 1.6; font-size: 14px;'>"
-                        . "<p style='margin-bottom: 8px;'>💳 <strong>Payment & Deposit Process:</strong></p>"
-                        . "<ol style='margin: 4px 0 12px 18px; padding: 0;'>"
-                        . "<li>Go to <strong>My Orders</strong> and select your approved order ticket.</li>"
-                        . "<li>Review the total quote and deposit requirement set by staff.</li>"
-                        . "<li>Send payment via GCash, Maya, or Bank Transfer.</li>"
-                        . "<li>Upload your receipt screenshot directly on the ticket page.</li>"
-                        . "<li>Once staff verifies your receipt, status changes to <strong>In Production</strong>!</li>"
-                        . "</ol>"
-                        . "<div style='margin-top: 12px;'>"
-                        . "<a href='/orders' style='display: inline-block; padding: 8px 14px; background-color: #7c3aed; color: #ffffff; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 13px;'>View My Orders &rarr;</a>"
-                        . "</div></div>"
-                ]);
+                return $respondAndTrack(
+                    "<div style='line-height: 1.6; font-size: 14px;'>"
+                    . "<p style='margin-bottom: 8px;'>💳 <strong>Payment & Deposit Process:</strong></p>"
+                    . "<ol style='margin: 4px 0 12px 18px; padding: 0;'>"
+                    . "<li>Go to <strong>My Orders</strong> and select your approved order ticket.</li>"
+                    . "<li>Review the total quote and deposit requirement set by staff.</li>"
+                    . "<li>Send payment via GCash, Maya, or Bank Transfer.</li>"
+                    . "<li>Upload your receipt screenshot directly on the ticket page.</li>"
+                    . "<li>Once staff verifies your receipt, status changes to <strong>In Production</strong>!</li>"
+                    . "</ol>"
+                    . "<div style='margin-top: 12px;'>"
+                    . "<a href='/orders' style='display: inline-block; padding: 8px 14px; background-color: #7c3aed; color: #ffffff; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 13px;'>View My Orders &rarr;</a>"
+                    . "</div></div>",
+                    'tier1-payment'
+                );
             }
 
             if (str_contains($latestLower, 'pickup') || str_contains($latestLower, 'claim') || str_contains($latestLower, 'collect')) {
-                return response()->json([
-                    'success' => true,
-                    'reply'   => "<div style='line-height: 1.6; font-size: 14px;'>"
-                        . "<p style='margin-bottom: 8px;'>🏪 <strong>Store Pickup Instructions:</strong></p>"
-                        . "<ol style='margin: 4px 0 12px 18px; padding: 0;'>"
-                        . "<li>Wait until your ticket status updates to <strong>Ready for Pickup</strong>.</li>"
-                        . "<li>Visit your designated branch (Salacot or San Jose) during store hours (8:00 AM – 5:30 PM, Mon-Sat).</li>"
-                        . "<li>Show your digital QR code or Ticket ID to our staff counter.</li>"
-                        . "<li>Pay any remaining balance and claim your items!</li>"
-                        . "</ol>"
-                        . "<div style='margin-top: 12px;'>"
-                        . "<a href='/orders' style='display: inline-block; padding: 8px 14px; background-color: #7c3aed; color: #ffffff; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 13px;'>Check Active Tickets &rarr;</a>"
-                        . "</div></div>"
-                ]);
+                return $respondAndTrack(
+                    "<div style='line-height: 1.6; font-size: 14px;'>"
+                    . "<p style='margin-bottom: 8px;'>🏪 <strong>Store Pickup Instructions:</strong></p>"
+                    . "<ol style='margin: 4px 0 12px 18px; padding: 0;'>"
+                    . "<li>Wait until your ticket status updates to <strong>Ready for Pickup</strong>.</li>"
+                    . "<li>Visit your designated branch (Salacot or San Jose) during store hours (8:00 AM – 5:30 PM, Mon-Sat).</li>"
+                    . "<li>Show your digital QR code or Ticket ID to our staff counter.</li>"
+                    . "<li>Pay any remaining balance and claim your items!</li>"
+                    . "</ol>"
+                    . "<div style='margin-top: 12px;'>"
+                    . "<a href='/orders' style='display: inline-block; padding: 8px 14px; background-color: #7c3aed; color: #ffffff; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 13px;'>Check Active Tickets &rarr;</a>"
+                    . "</div></div>",
+                    'tier1-pickup'
+                );
             }
 
             if (str_contains($latestLower, 'cancel') || str_contains($latestLower, 'change') || str_contains($latestLower, 'edit')) {
-                return response()->json([
-                    'success' => true,
-                    'reply'   => "<div style='line-height: 1.6; font-size: 14px;'>"
-                        . "<p style='margin-bottom: 8px;'>🚫 <strong>Ticket Cancellation & Edit Guide:</strong></p>"
-                        . "<ul style='margin: 4px 0 12px 18px; padding: 0; list-style-type: disc;'>"
-                        . "<li>Tickets in <strong>Pending Staff Review</strong> can be edited or cancelled directly from your ticket details page.</li>"
-                        . "<li>Tickets currently <strong>Under Review</strong> or <strong>In Production</strong> require staff approval for cancellation.</li>"
-                        . "</ul>"
-                        . "<div style='margin-top: 12px;'>"
-                        . "<a href='/orders' style='display: inline-block; padding: 8px 14px; background-color: #7c3aed; color: #ffffff; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 13px;'>Manage My Tickets &rarr;</a>"
-                        . "</div></div>"
-                ]);
+                return $respondAndTrack(
+                    "<div style='line-height: 1.6; font-size: 14px;'>"
+                    . "<p style='margin-bottom: 8px;'>🚫 <strong>Ticket Cancellation & Edit Guide:</strong></p>"
+                    . "<ul style='margin: 4px 0 12px 18px; padding: 0; list-style-type: disc;'>"
+                    . "<li>Tickets in <strong>Pending Staff Review</strong> can be edited or cancelled directly from your ticket details page.</li>"
+                    . "<li>Tickets currently <strong>Under Review</strong> or <strong>In Production</strong> require staff approval for cancellation.</li>"
+                    . "</ul>"
+                    . "<div style='margin-top: 12px;'>"
+                    . "<a href='/orders' style='display: inline-block; padding: 8px 14px; background-color: #7c3aed; color: #ffffff; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 13px;'>Manage My Tickets &rarr;</a>"
+                    . "</div></div>",
+                    'tier1-cancel'
+                );
             }
 
             if (str_contains($latestLower, 'shop') || str_contains($latestLower, 'order') || str_contains($latestLower, 'buy') || str_contains($latestLower, 'place')) {
-                return response()->json([
-                    'success' => true,
-                    'reply'   => "<div style='line-height: 1.6; font-size: 14px;'>"
-                        . "<p style='margin-bottom: 8px;'>🛒 <strong>How to Shop & Order Online:</strong></p>"
-                        . "<ol style='margin: 4px 0 12px 18px; padding: 0;'>"
-                        . "<li>Browse our <strong>Shop Catalog</strong> or create a <strong>Custom Order Ticket</strong>.</li>"
-                        . "<li>Select your items, quantity, pickup date, time slot, and preferred branch (Salacot or San Jose).</li>"
-                        . "<li>Submit your order ticket for staff review.</li>"
-                        . "<li>Once approved and quoted, pay the deposit to lock in your order!</li>"
-                        . "</ol>"
-                        . "<div style='margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;'>"
-                        . "<a href='/shop' style='display: inline-block; padding: 8px 14px; background-color: #7c3aed; color: #ffffff; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 13px;'>Browse Catalog &rarr;</a>"
-                        . "<a href='/orders/create' style='display: inline-block; padding: 8px 14px; background-color: #f3e8ff; color: #7c3aed; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 13px;'>Custom Order Ticket</a>"
-                        . "</div></div>"
-                ]);
+                return $respondAndTrack(
+                    "<div style='line-height: 1.6; font-size: 14px;'>"
+                    . "<p style='margin-bottom: 8px;'>🛒 <strong>How to Shop & Order Online:</strong></p>"
+                    . "<ol style='margin: 4px 0 12px 18px; padding: 0;'>"
+                    . "<li>Browse our <strong>Shop Catalog</strong> or create a <strong>Custom Order Ticket</strong>.</li>"
+                    . "<li>Select your items, quantity, pickup date, time slot, and preferred branch (Salacot or San Jose).</li>"
+                    . "<li>Submit your order ticket for staff review.</li>"
+                    . "<li>Once approved and quoted, pay the deposit to lock in your order!</li>"
+                    . "</ol>"
+                    . "<div style='margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;'>"
+                    . "<a href='/shop' style='display: inline-block; padding: 8px 14px; background-color: #7c3aed; color: #ffffff; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 13px;'>Browse Catalog &rarr;</a>"
+                    . "<a href='/orders/create' style='display: inline-block; padding: 8px 14px; background-color: #f3e8ff; color: #7c3aed; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 13px;'>Custom Order Ticket</a>"
+                    . "</div></div>",
+                    'tier1-order-guide'
+                );
             }
         }
 
         // 1C. Branch Info & Operating Hours
-        $isBranchQuery = (str_contains($latestLower, 'branch') 
-            || str_contains($latestLower, 'location') 
-            || str_contains($latestLower, 'hours') 
-            || str_contains($latestLower, 'open') 
+        $isBranchQuery = (str_contains($latestLower, 'branch')
+            || str_contains($latestLower, 'location')
+            || str_contains($latestLower, 'hours')
+            || str_contains($latestLower, 'open')
             || str_contains($latestLower, 'schedule')
             || str_contains($latestLower, 'salacot')
             || str_contains($latestLower, 'san jose'))
-            && !str_contains($latestLower, 'ticket') 
+            && !str_contains($latestLower, 'ticket')
             && !str_contains($latestLower, 'order');
 
         if ($isBranchQuery) {
-            return response()->json([
-                'success' => true,
-                'reply'   => "<div style='line-height: 1.6; font-size: 14px;'>"
-                    . "<p style='margin-bottom: 8px;'>🏪 <strong>Masaganang Pagpapala Pasalubong Branches:</strong></p>"
-                    . "<ul style='margin: 4px 0 12px 18px; padding: 0; list-style-type: disc;'>"
-                    . "<li><strong>Main Branch:</strong> Salacot, San Ildefonso, Bulacan</li>"
-                    . "<li><strong>Second Branch:</strong> San Jose, San Ildefonso, Bulacan</li>"
-                    . "</ul>"
-                    . "<p style='margin-bottom: 8px;'>⏰ <strong>Operating Hours:</strong><br>Monday to Saturday: <strong>8:00 AM – 5:30 PM</strong> (Closed Sundays)</p>"
-                    . "<div style='margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;'>"
-                    . "<a href='/orders/create' style='display: inline-block; padding: 8px 14px; background-color: #7c3aed; color: #ffffff; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 13px;'>Create Order Ticket &rarr;</a>"
-                    . "</div></div>"
-            ]);
+            return $respondAndTrack(
+                "<div style='line-height: 1.6; font-size: 14px;'>"
+                . "<p style='margin-bottom: 8px;'>🏪 <strong>Masaganang Pagpapala Pasalubong Branches:</strong></p>"
+                . "<ul style='margin: 4px 0 12px 18px; padding: 0; list-style-type: disc;'>"
+                . "<li><strong>Main Branch:</strong> Salacot, San Ildefonso, Bulacan</li>"
+                . "<li><strong>Second Branch:</strong> San Jose, San Ildefonso, Bulacan</li>"
+                . "</ul>"
+                . "<p style='margin-bottom: 8px;'>⏰ <strong>Operating Hours:</strong><br>Monday to Saturday: <strong>8:00 AM – 5:30 PM</strong> (Closed Sundays)</p>"
+                . "<div style='margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;'>"
+                . "<a href='/orders/create' style='display: inline-block; padding: 8px 14px; background-color: #7c3aed; color: #ffffff; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 13px;'>Create Order Ticket &rarr;</a>"
+                . "</div></div>",
+                'tier1-branches'
+            );
         }
 
-        
         // TIER 2: DIRECT DATABASE USER TICKETS & ORDERS LOOKUP
-        
         $extractedId = null;
         if (preg_match('/#([A-Za-z0-9_-]{1,64})/', $latestUserMessage, $matches)) {
             $extractedId = $matches[1];
         }
 
-        $isApprovedQuery = str_contains($latestLower, 'approve') 
-            || str_contains($latestLower, 'paym') 
+        $isApprovedQuery = str_contains($latestLower, 'approve')
+            || str_contains($latestLower, 'paym')
             || str_contains($latestLower, 'paid');
-            
-        $isPendingQuery = str_contains($latestLower, 'review') 
+
+        $isPendingQuery = str_contains($latestLower, 'review')
             || str_contains($latestLower, 'pending');
 
-        $isReadyQuery = str_contains($latestLower, 'ready') 
+        $isReadyQuery = str_contains($latestLower, 'ready')
             || str_contains($latestLower, 'completed');
 
-        $isTicketIntent = $extractedId !== null 
+        $isTicketIntent = $extractedId !== null
             || preg_match('/\b(ticket|tickets|order|orders|status|quote|history)\b/i', $latestLower)
             || $isApprovedQuery
             || $isPendingQuery
@@ -195,10 +214,11 @@ class ChatAssistantController extends Controller
 
         if ($isTicketIntent) {
             if (! $userId) {
-                return response()->json([
-                    'success' => true,
-                    'reply'   => "Please <a href='/login' style='color:#7c3aed; font-weight:600;'>log in</a> to your account so I can retrieve your order tickets from our database!"
-                ]);
+                return $respondAndTrack(
+                    "Please <a href='/login' style='color:#7c3aed; font-weight:600;'>log in</a> to your account so I can retrieve your order tickets from our database!",
+                    'tier2-guest',
+                    200
+                );
             }
 
             try {
@@ -222,16 +242,13 @@ class ChatAssistantController extends Controller
                         ->first();
 
                     if ($specificTicket) {
-                        return response()->json([
-                            'success' => true,
-                            'reply'   => $this->buildSingleTicketSummary($specificTicket)
-                        ]);
+                        return $respondAndTrack($this->buildSingleTicketSummary($specificTicket), 'tier2-ticket-detail');
                     }
 
-                    return response()->json([
-                        'success' => true,
-                        'reply'   => "I couldn't find ticket <strong>#{$cleanId}</strong> under your account. You can view all your tickets on the <a href='/orders' style='color:#7c3aed; font-weight:600;'>My Orders</a> page."
-                    ]);
+                    return $respondAndTrack(
+                        "I couldn't find ticket <strong>#{$cleanId}</strong> under your account. You can view all your tickets on the <a href='/orders' style='color:#7c3aed; font-weight:600;'>My Orders</a> page.",
+                        'tier2-ticket-not-found'
+                    );
                 }
 
                 // 2B. Status-Filtered Database Query for Logged-In User
@@ -262,10 +279,10 @@ class ChatAssistantController extends Controller
                 $userTickets = $query->orderBy('created_at', 'desc')->get();
 
                 if ($userTickets->isEmpty() && $hasStatusFilter) {
-                    return response()->json([
-                        'success' => true,
-                        'reply'   => "You currently have no order tickets marked as <strong>{$statusLabel}</strong>."
-                    ]);
+                    return $respondAndTrack(
+                        "You currently have no order tickets marked as <strong>{$statusLabel}</strong>.",
+                        'tier2-tickets-empty'
+                    );
                 }
 
                 if ($userTickets->isEmpty()) {
@@ -276,38 +293,30 @@ class ChatAssistantController extends Controller
                 }
 
                 if ($userTickets->count() === 1) {
-                    return response()->json([
-                        'success' => true,
-                        'reply'   => $this->buildSingleTicketSummary($userTickets->first())
-                    ]);
+                    return $respondAndTrack($this->buildSingleTicketSummary($userTickets->first()), 'tier2-single-ticket');
                 } elseif ($userTickets->count() > 1) {
                     $ticketsText = "Here are your order tickets from our database:\n";
                     foreach ($userTickets as $t) {
                         $ticketsText .= $this->formatTicketCard($t) . "\n";
                     }
-                    return response()->json([
-                        'success' => true,
-                        'reply'   => trim($ticketsText)
-                    ]);
+                    return $respondAndTrack(trim($ticketsText), 'tier2-ticket-list');
                 } else {
-                    return response()->json([
-                        'success' => true,
-                        'reply'   => "You don't have any order tickets in your account yet. <a href='/orders/create' style='color:#7c3aed; font-weight:600;'>Create one here &rarr;</a>"
-                    ]);
+                    return $respondAndTrack(
+                        "You don't have any order tickets in your account yet. <a href='/orders/create' style='color:#7c3aed; font-weight:600;'>Create one here &rarr;</a>",
+                        'tier2-no-tickets'
+                    );
                 }
-
             } catch (\Exception $e) {
                 Log::error('ChatAssistant Ticket Query Error: ' . $e->getMessage());
-                return response()->json([
-                    'success' => true,
-                    'reply'   => "We encountered an issue reading your tickets from the database. Please check the <a href='/orders' style='color:#7c3aed; font-weight:600;'>My Orders</a> page directly."
-                ]);
+                return $respondAndTrack(
+                    "We encountered an issue reading your tickets from the database. Please check the <a href='/orders' style='color:#7c3aed; font-weight:600;'>My Orders</a> page directly.",
+                    'tier2-error',
+                    500
+                );
             }
         }
 
-        
         // TIER 3: DIRECT DATABASE SHOP CATALOG LOOKUP
-        
         $isProductQuery = preg_match('/\b(product|products|item|items|catalog|shop|store|sell|selling|menu|available|availb|pasalubong|roll|cake|cookie|package|wedding)\b/i', $latestLower)
             || str_contains($latestLower, 'what do you')
             || str_contains($latestLower, 'chocovron')
@@ -337,7 +346,7 @@ class ChatAssistantController extends Controller
                         $productUrl = Route::has('shop.product')
                             ? route('shop.product', $prod->slug)
                             : "/shop/{$prod->slug}";
-                        
+
                         $productOutput .= "[PRODUCT_CARD]\n"
                             . "Name: {$prod->name}\n"
                             . "Price: ₱" . number_format((float) $prod->price, 2) . "\n"
@@ -347,19 +356,14 @@ class ChatAssistantController extends Controller
                             . "[END_PRODUCT_CARD]\n";
                     }
 
-                    return response()->json([
-                        'success' => true,
-                        'reply'   => trim($productOutput)
-                    ]);
+                    return $respondAndTrack(trim($productOutput), 'tier3-catalog');
                 }
             } catch (\Exception $e) {
                 Log::error('ChatAssistant Shop Query Error: ' . $e->getMessage());
             }
         }
 
-        
         // TIER 4: OPENROUTER LLM FALLBACK WITH FULL LIVE DB CONTEXT INJECTION
-        
         $dbContext = $this->buildLiveDatabaseContext($userId);
 
         $systemPrompt = <<<EOT
@@ -382,16 +386,14 @@ EOT;
         try {
             $reply = $this->openRouter->ask($latestUserMessage, $systemPrompt);
 
-            return response()->json([
-                'success' => true,
-                'reply'   => $reply,
-            ]);
+            return $respondAndTrack($reply, 'tier4-openrouter-llm', 200);
         } catch (\Exception $e) {
             Log::error('OpenRouter Chat Assistant Error: ' . $e->getMessage());
-            return response()->json([
-                'success' => true,
-                'reply'   => "Hello! I'm Jive, your AI assistant for Masaganang Pagpapala Pasalubong. How can I help you with our products or your order tickets today? 🧁",
-            ]);
+            return $respondAndTrack(
+                "Hello! I'm Jive, your AI assistant for Masaganang Pagpapala Pasalubong. How can I help you with our products or your order tickets today? 🧁",
+                'tier4-openrouter-fallback',
+                502
+            );
         }
     }
 
@@ -480,11 +482,11 @@ EOT;
 
         $firstItem = $t->items->first();
         $rawItemType = $firstItem->item_type ?? $t->additional_notes ?? "Pasalubong Order";
-        
+
         $subject = ucwords(str_replace(['_', '-'], ' ', $rawItemType));
         $statusStr = strtoupper(str_replace('_', ' ', $t->status ?? 'PENDING STAFF REVIEW'));
-        $dateStr = $t->pickup_date 
-            ? \Carbon\Carbon::parse($t->pickup_date)->format('M d, Y') 
+        $dateStr = $t->pickup_date
+            ? \Carbon\Carbon::parse($t->pickup_date)->format('M d, Y')
             : ($t->created_at ? $t->created_at->format('M d, Y') : date('M d, Y'));
 
         $ticketUrl = Route::has('orders.show')
@@ -507,18 +509,18 @@ EOT;
         $branch = ucwords(str_replace(['_', '-'], ' ', $t->pickup_branch ?? 'Main Shop'));
         $pickupDate = $t->pickup_date ? \Carbon\Carbon::parse($t->pickup_date)->format('M d, Y') : 'N/A';
         $pickupTime = $t->pickup_time ?? 'N/A';
-        
+
         $itemDetails = [];
         foreach ($t->items as $item) {
             $formattedName = ucwords(str_replace(['_', '-'], ' ', $item->item_type));
             $itemDetails[] = "<li><strong>{$item->quantity}x</strong> {$formattedName}</li>";
         }
-        $itemListHtml = count($itemDetails) > 0 
-            ? "<ul style='margin: 4px 0 8px 18px; padding: 0; list-style-type: disc;'>" . implode('', $itemDetails) . "</ul>" 
+        $itemListHtml = count($itemDetails) > 0
+            ? "<ul style='margin: 4px 0 8px 18px; padding: 0; list-style-type: disc;'>" . implode('', $itemDetails) . "</ul>"
             : "<div style='margin-left: 10px;'>• 1x Order Inquiry</div>";
 
-        $priceStr = ($t->total_price && $t->total_price > 0) 
-            ? "₱" . number_format((float) $t->total_price, 2) 
+        $priceStr = ($t->total_price && $t->total_price > 0)
+            ? "₱" . number_format((float) $t->total_price, 2)
             : "Awaiting Quote";
 
         return "<div style='line-height: 1.6; font-size: 14px;'>"

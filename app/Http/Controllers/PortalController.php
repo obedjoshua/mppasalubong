@@ -45,12 +45,23 @@ class PortalController extends Controller
     public function apiRequests(Request $request)
     {
         $filters = $request->validate([
-            "method" => ["nullable", "in:GET,POST,PUT,PATCH,DELETE"],
-            "status" => ["nullable", "integer", "between:100,599"],
-            "path" => ["nullable", "string", "max:100"],
+            "service" => ["nullable", "in:all,chatbot,vision,general"],
+            "method"  => ["nullable", "in:GET,POST,PUT,PATCH,DELETE"],
+            "status"  => ["nullable", "integer", "between:100,599"],
+            "path"    => ["nullable", "string", "max:100"],
         ]);
 
         $query = ApiRequestMetric::query()->latest();
+
+        $service = $filters["service"] ?? "all";
+        if ($service === "chatbot") {
+            $query->where("path", "like", "%chat%");
+        } elseif ($service === "vision") {
+            $query->where("path", "like", "%vision%");
+        } elseif ($service === "general") {
+            $query->where("path", "not like", "%chat%")
+                  ->where("path", "not like", "%vision%");
+        }
 
         if (! empty($filters["method"])) {
             $query->where("method", $filters["method"]);
@@ -66,7 +77,71 @@ class PortalController extends Controller
 
         $requests = $query->paginate(50)->withQueryString();
 
-        return view("portals.api-requests", compact("requests", "filters"));
+        // Overall & Chatbot-specific telemetry stats
+        $allMetrics = ApiRequestMetric::query();
+        $chatMetrics = ApiRequestMetric::query()->where("path", "like", "%chat%");
+
+        $totalCount = (clone $allMetrics)->count();
+
+        $apiSummary = [
+            "totalRequests"   => $totalCount,
+            "chatbotRequests" => (clone $chatMetrics)->count(),
+            "chatbotAvgMs"    => (int) round((clone $chatMetrics)->avg("duration_ms") ?? 0),
+            "successRate"     => $totalCount > 0
+                ? round(((clone $allMetrics)->whereBetween("status", [200, 399])->count() / $totalCount) * 100, 1)
+                : 100.0,
+        ];
+
+        // Status code distribution for chart
+        $statusBreakdown = [
+            "2xx" => (clone $allMetrics)->whereBetween("status", [200, 299])->count(),
+            "3xx" => (clone $allMetrics)->whereBetween("status", [300, 399])->count(),
+            "4xx" => (clone $allMetrics)->whereBetween("status", [400, 499])->count(),
+            "5xx" => (clone $allMetrics)->whereBetween("status", [500, 599])->count(),
+        ];
+
+        // Daily API vs Chatbot volume series for stock-style timeframe chart
+        $dayExpression = match (DB::connection()->getDriverName()) {
+            'sqlite' => 'strftime("%Y-%m-%d", created_at)',
+            'pgsql'  => 'to_char(date_trunc(\'day\', created_at), \'YYYY-MM-DD\')',
+            default  => 'DATE_FORMAT(created_at, "%Y-%m-%d")',
+        };
+
+        $dailyTotals = ApiRequestMetric::query()
+            ->selectRaw("$dayExpression as day, COUNT(*) as total, SUM(CASE WHEN path LIKE '%chat%' THEN 1 ELSE 0 END) as chat_total, ROUND(AVG(duration_ms)) as avg_ms")
+            ->groupBy("day")
+            ->orderBy("day")
+            ->get()
+            ->map(function ($row): array {
+                /** @var object{day: string, total: int|string, chat_total: int|string, avg_ms: int|string|null} $row */
+                $parsed = Carbon::parse($row->day);
+
+                return [
+                    "timestamp" => $parsed->toIso8601String(),
+                    "label"     => $parsed->format("M j"),
+                    "total"     => (int) $row->total,
+                    "chatbot"   => (int) $row->chat_total,
+                    "avgMs"     => (int) ($row->avg_ms ?? 0),
+                ];
+            })
+            ->values();
+
+        // Chatbot tier breakdown (Tier 1 vs Tier 2 DB Tickets vs Tier 3 Catalog vs Tier 4 OpenRouter AI)
+        $chatbotTiers = [
+            "Tier 1 · Guidance"    => (clone $chatMetrics)->where("path", "like", "%tier1%")->count(),
+            "Tier 2 · DB Tickets"  => (clone $chatMetrics)->where("path", "like", "%tier2%")->count(),
+            "Tier 3 · DB Catalog"  => (clone $chatMetrics)->where("path", "like", "%tier3%")->count(),
+            "Tier 4 · OpenRouter"  => (clone $chatMetrics)->where("path", "like", "%tier4%")->count(),
+        ];
+
+        return view("portals.api-requests", compact(
+            "requests",
+            "filters",
+            "apiSummary",
+            "statusBreakdown",
+            "dailyTotals",
+            "chatbotTiers"
+        ));
     }
 
     public function updatePostVisibility(Request $request, Post $post): RedirectResponse
